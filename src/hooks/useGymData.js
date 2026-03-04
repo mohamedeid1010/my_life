@@ -19,6 +19,7 @@ function generateInitialData() {
       week: w,
       startDate: dateFormatter.format(currentStart),
       days: [false, false, false, false, false, false, false],
+      sessions: {},  // keyed by dayIndex, e.g. { 0: { sessionType, exercises, totalVolume, ... } }
       weight: '',
       bodyFat: '',
     });
@@ -376,6 +377,7 @@ function serializeForFirestore(data) {
     week: week.week,
     startDate: week.startDate,
     days: week.days,
+    sessions: week.sessions || {},
     weight: week.weight,
     bodyFat: week.bodyFat,
   }));
@@ -388,6 +390,7 @@ export default function useGymData() {
   const { user } = useAuth();
   const [data, setData] = useState(generateInitialData);
   const [targetDays, setTargetDays] = useState(5);
+  const [workoutSystem, setWorkoutSystem] = useState('ppl');
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -411,6 +414,9 @@ export default function useGymData() {
           if (saved.targetDays) {
             setTargetDays(saved.targetDays);
           }
+          if (saved.workoutSystem) {
+            setWorkoutSystem(saved.workoutSystem);
+          }
         }
       } catch (err) {
         console.error('Error loading data:', err);
@@ -433,6 +439,7 @@ export default function useGymData() {
         await setDoc(docRef, {
           gymData: serializeForFirestore(data),
           targetDays,
+          workoutSystem,
           updatedAt: new Date().toISOString(),
           email: user.email,
           displayName: user.displayName || '',
@@ -445,7 +452,7 @@ export default function useGymData() {
     }, 1000); // 1 second debounce
 
     return () => clearTimeout(timeout);
-  }, [data, targetDays, user, loaded]);
+  }, [data, targetDays, workoutSystem, user, loaded]);
 
   const toggleDay = useCallback((weekIndex, dayIndex) => {
     setData(prev => {
@@ -470,6 +477,32 @@ export default function useGymData() {
     setData(newData);
   };
 
+  const updateSession = useCallback((weekIndex, dayIndex, sessionData) => {
+    setData(prev => {
+      const newData = [...prev];
+      const week = { ...newData[weekIndex] };
+      week.sessions = { ...week.sessions, [dayIndex]: sessionData };
+      // Also mark the day as done
+      week.days = week.days.map((d, i) => i === dayIndex ? true : d);
+      newData[weekIndex] = week;
+      return newData;
+    });
+  }, []);
+
+  const deleteSession = useCallback((weekIndex, dayIndex) => {
+    setData(prev => {
+      const newData = [...prev];
+      const week = { ...newData[weekIndex] };
+      const newSessions = { ...week.sessions };
+      delete newSessions[dayIndex];
+      week.sessions = newSessions;
+      // Also un-toggle the day
+      week.days = week.days.map((d, i) => i === dayIndex ? false : d);
+      newData[weekIndex] = week;
+      return newData;
+    });
+  }, []);
+
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   
   const enrichedData = useMemo(() => {
@@ -490,9 +523,13 @@ export default function useGymData() {
     data,
     targetDays,
     setTargetDays,
+    workoutSystem,
+    setWorkoutSystem,
     toggleDay,
     updateWeight,
     updateBodyFat,
+    updateSession,
+    deleteSession,
     enrichedData,
     stats,
     markTodayComplete,

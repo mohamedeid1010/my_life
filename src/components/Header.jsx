@@ -1,9 +1,23 @@
 import { Dumbbell, Download, Target } from 'lucide-react';
 
-/**
- * Header — Dark themed with glass effect
- */
-export default function Header({ targetDays, setTargetDays, onExport }) {
+const WORKOUT_SYSTEMS = [
+  { value: 'ppl', label: '💪 Push / Pull / Legs (PPL)' },
+  { value: 'ul', label: '🔄 Upper / Lower (UL)' },
+  { value: 'ppl_ul', label: '🔥 PPL + Upper/Lower' },
+  { value: 'fullbody', label: '🏋️ Full Body' },
+  { value: 'bro', label: '🦾 Bro Split (5-day)' },
+  { value: 'arnoldSplit', label: '🏆 Arnold Split' },
+  { value: 'phul', label: '⚡ PHUL (Power Hypertrophy)' },
+  { value: 'phat', label: '🔥 PHAT' },
+  { value: 'gzclp', label: '📊 GZCLP' },
+  { value: '531', label: '🎯 Wendler 5/3/1' },
+  { value: 'stronglifts', label: '🏗️ StrongLifts 5x5' },
+  { value: 'greyskull', label: '💀 Greyskull LP' },
+  { value: 'texas', label: '🤠 Texas Method' },
+  { value: 'custom', label: '✏️ Custom' },
+];
+
+export default function Header({ targetDays, setTargetDays, onExport, workoutSystem, setWorkoutSystem }) {
   return (
     <div className="glass-card-static flex flex-col lg:flex-row justify-between items-center p-5 gap-4 animate-slide-up">
       {/* Title */}
@@ -53,6 +67,28 @@ export default function Header({ targetDays, setTargetDays, onExport }) {
             </button>
           </div>
         </div>
+
+        {/* Workout System Selector */}
+        {setWorkoutSystem && (
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+            style={{
+              background: 'rgba(16, 185, 129, 0.08)',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+            }}
+          >
+            <Dumbbell size={18} className="text-emerald-400 shrink-0" />
+            <select
+              value={workoutSystem || 'ppl'}
+              onChange={e => setWorkoutSystem(e.target.value)}
+              className="bg-transparent text-emerald-300 font-bold text-sm focus:outline-none cursor-pointer"
+              style={{ colorScheme: 'dark' }}
+            >
+              {WORKOUT_SYSTEMS.map(s => (
+                <option key={s.value} value={s.value} className="bg-gray-900 text-white">{s.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Export Button */}
         <button

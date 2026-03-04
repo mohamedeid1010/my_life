@@ -61,14 +61,10 @@ function isToday(date) {
 export default function HeatmapCalendar({
   enrichedData,
   onToggleDay,
-  onUpdateWeight,
-  onUpdateBodyFat,
+  onOpenWorkoutLog,
 }) {
   const [tooltip, setTooltip] = useState(null);
-  const [expandedWeek, setExpandedWeek] = useState(null);
   const monthLabels = getMonthLabels(enrichedData);
-
-  const currentWeekIdx = enrichedData.findIndex((w) => w.isCurrentWeek);
 
   return (
     <div className="glass-card-static p-5 md:p-7 animate-slide-up" style={{ animationDelay: '0.25s' }}>
@@ -138,7 +134,22 @@ export default function HeatmapCalendar({
                       return (
                         <button
                           key={dIdx}
-                          onClick={() => !isLocked && onToggleDay(wIdx, dIdx)}
+                          onClick={() => {
+                            if (isLocked) return;
+                            if (onOpenWorkoutLog) {
+                              // If not done yet, open modal to log
+                              // If done and has session, open modal to edit
+                              // If done without session, toggle off
+                              const existingSession = week.sessions?.[dIdx] || null;
+                              if (dayObj.status === 'WORKOUT' && !existingSession) {
+                                onToggleDay(wIdx, dIdx); // just un-toggle
+                              } else {
+                                onOpenWorkoutLog(wIdx, dIdx, existingSession);
+                              }
+                            } else {
+                              onToggleDay(wIdx, dIdx);
+                            }
+                          }}
                           disabled={isLocked}
                           onMouseEnter={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -208,128 +219,6 @@ export default function HeatmapCalendar({
             <Trophy size={13} className="text-amber-500" />
             Goal Met
           </span>
-        </div>
-      </div>
-
-      {/* ─── Weight & Body Fat Section ─── */}
-      <div className="mt-6 pt-5 border-t border-white/5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-white/70 flex items-center gap-2">
-            📊 Weekly Weight & Body Fat
-          </h3>
-          <span className="text-[10px] font-semibold text-violet-400 px-2.5 py-1 rounded-full"
-            style={{ background: 'rgba(139,92,246,0.15)' }}
-          >
-            {currentWeekIdx >= 0 ? `Current: Week ${currentWeekIdx + 1}` : '—'}
-          </span>
-        </div>
-
-        <div className="overflow-x-auto custom-scrollbar">
-          <div className="flex gap-2 pb-2" style={{ minWidth: 'max-content' }}>
-            {enrichedData.map((week, wIdx) => {
-              const isCurrent = week.isCurrentWeek;
-              const isExpanded = expandedWeek === wIdx;
-              const hasData = week.weight || week.bodyFat;
-              // Past weeks: check if the week's start date is before today
-              const startDate = new Date(2026, 0, 3);
-              const wStart = new Date(startDate);
-              wStart.setDate(wStart.getDate() + wIdx * 7);
-              const isPast = wStart < new Date();
-              // Show inputs for current week always, past weeks always, future only if expanded
-              const showInputs = isCurrent || isPast || isExpanded;
-
-              return (
-                <div
-                  key={week.week}
-                  className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border text-center transition-all duration-200 ${
-                    isCurrent
-                      ? 'min-w-[90px] border-violet-500/40 shadow-md shadow-violet-500/10 ring-2 ring-violet-500/20'
-                      : week.isGoalMet
-                        ? 'min-w-[72px] border-violet-500/15'
-                        : 'min-w-[72px] border-white/5 hover:border-white/10'
-                  }`}
-                  style={{
-                    background: isCurrent
-                      ? 'rgba(139,92,246,0.1)'
-                      : week.isGoalMet
-                        ? 'rgba(139,92,246,0.05)'
-                        : 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  {/* Week label */}
-                  <button
-                    onClick={() => setExpandedWeek(isExpanded ? null : wIdx)}
-                    className="flex items-center gap-1 w-full justify-center"
-                  >
-                    <span
-                      className={`text-[10px] font-black uppercase tracking-wider ${
-                        isCurrent ? 'text-violet-400' : week.isGoalMet ? 'text-violet-500/60' : 'text-white/25'
-                      }`}
-                    >
-                      {isCurrent ? '► Wk ' : 'Wk '}
-                      {week.week}
-                    </span>
-                    {(isCurrent || hasData) && (
-                      isExpanded
-                        ? <ChevronUp size={10} className="text-white/25" />
-                        : <ChevronDown size={10} className="text-white/25" />
-                    )}
-                  </button>
-
-                  {/* Goal badge */}
-                  {week.isGoalMet && (
-                    <div className="flex items-center gap-0.5">
-                      <Trophy size={10} className="text-amber-500" />
-                      <span className="text-[8px] font-bold text-amber-400">DONE</span>
-                    </div>
-                  )}
-
-                  {/* Inputs — visible for current, past, or expanded weeks */}
-                  {showInputs && (
-                    <>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.1"
-                        placeholder="kg"
-                        value={week.weight}
-                        onChange={(e) => onUpdateWeight(wIdx, e.target.value)}
-                        className="w-full text-center py-1.5 px-1 border rounded-lg text-xs font-bold focus:ring-2 outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          borderColor: 'rgba(139,92,246,0.2)',
-                          color: '#c4b5fd',
-                        }}
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                        placeholder="%"
-                        value={week.bodyFat}
-                        onChange={(e) => onUpdateBodyFat(wIdx, e.target.value)}
-                        className="w-full text-center py-1.5 px-1 border rounded-lg text-xs font-bold focus:ring-2 outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          borderColor: 'rgba(236,72,153,0.2)',
-                          color: '#f9a8d4',
-                        }}
-                      />
-                    </>
-                  )}
-
-                  {/* Compact display */}
-                  {!isCurrent && !isExpanded && hasData && (
-                    <div className="text-[9px] text-white/30 font-bold leading-tight">
-                      {week.weight && <div>{week.weight} kg</div>}
-                      {week.bodyFat && <div>{week.bodyFat}%</div>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>

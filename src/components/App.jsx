@@ -4,33 +4,9 @@ import useGymData from '../hooks/useGymData';
 import useExportCSV from '../hooks/useExportCSV';
 import LoginPage from './LoginPage';
 import Header from './Header';
-import HeroSection from './HeroSection';
-import DailyActionPanel from './DailyActionPanel';
-import MomentumCard from './MomentumCard';
-import AICoachCard from './AICoachCard';
-import PatternInsights from './PatternInsights';
-import GamificationPanel from './GamificationPanel';
-import HeatmapCalendar from './HeatmapCalendar';
 import { Settings, Eye, EyeOff, LogOut, Loader2, Cloud, CloudOff } from 'lucide-react';
 
-const SECTIONS = [
-  { key: 'hero', label: 'Streak Counter' },
-  { key: 'daily', label: 'Daily Action' },
-  { key: 'momentum', label: 'Momentum' },
-  { key: 'coach', label: 'AI Coach' },
-  { key: 'patterns', label: 'Pattern Insights' },
-  { key: 'gamification', label: 'Gamification' },
-];
 
-function loadVisibility() {
-  try {
-    const saved = localStorage.getItem('gym_section_visibility');
-    if (saved) return JSON.parse(saved);
-  } catch {
-    // Ignore error and fall back to defaults
-  }
-  return { hero: true, daily: true, momentum: true, coach: true, patterns: true, gamification: true };
-}
 
 export default function App() {
   const { user, loading: authLoading, logout } = useAuth();
@@ -59,13 +35,25 @@ export default function App() {
   return <Dashboard user={user} logout={logout} />;
 }
 
+import { Activity, Target, Dumbbell } from 'lucide-react';
+import GymTracker from './GymTracker';
+import HabitsTracker from './HabitsTracker';
+import LifeOverview from './LifeOverview';
+
+// Remove the standalone unused functions and imports we moved to GymTracker
+// Notice we keep useAuth, useGymData, useExportCSV in App.jsx
+
 function Dashboard({ user, logout }) {
   const {
     targetDays,
     setTargetDays,
+    workoutSystem,
+    setWorkoutSystem,
     toggleDay,
     updateWeight,
     updateBodyFat,
+    updateSession,
+    deleteSession,
     enrichedData,
     stats,
     markTodayComplete,
@@ -75,16 +63,7 @@ function Dashboard({ user, logout }) {
 
   const exportCSV = useExportCSV(enrichedData);
 
-  const [visibility, setVisibility] = useState(loadVisibility);
-  const [showSettings, setShowSettings] = useState(false);
-
-  const toggleSection = (key) => {
-    const updated = { ...visibility, [key]: !visibility[key] };
-    setVisibility(updated);
-    localStorage.setItem('gym_section_visibility', JSON.stringify(updated));
-  };
-
-  const v = visibility;
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview', 'gym', 'habits'
 
   // Loading data from Firestore
   if (!loaded) {
@@ -101,120 +80,104 @@ function Dashboard({ user, logout }) {
     );
   }
 
+  const navItems = [
+    { id: 'overview', label: 'نظرة عامة', icon: Activity },
+    { id: 'gym', label: 'الجيم', icon: Dumbbell },
+    { id: 'habits', label: 'العادات', icon: Target },
+  ];
+
   return (
     <div
-      dir="ltr"
+      dir="rtl"
       className="min-h-screen p-4 md:p-6 font-sans"
       style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <Header
-          targetDays={targetDays}
-          setTargetDays={setTargetDays}
-          onExport={exportCSV}
-        />
-
-        {/* User bar: name, sync status, logout */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
-              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
-            >
-              {(user.displayName || user.email || '?')[0].toUpperCase()}
-            </div>
-            <span className="text-sm font-semibold text-white/50">
-              {user.displayName || user.email}
-            </span>
-            {/* Sync indicator */}
-            {saving ? (
-              <span className="flex items-center gap-1 text-xs text-amber-400/60">
-                <CloudOff size={12} /> Saving...
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-emerald-400/60">
-                <Cloud size={12} /> Synced
-              </span>
-            )}
+        
+        {/* Top Navigation Bar & User Bar */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 glass-card p-4 rounded-2xl">
+          
+          {/* Main Navigation Tabs */}
+          <div className="flex bg-black/20 p-1 rounded-xl w-full md:w-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                    isActive
+                      ? 'bg-violet-500/20 text-violet-300 shadow-sm'
+                      : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-colors"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <Settings size={14} />
-              Sections
-            </button>
+          {/* User bar: name, sync status, logout (moved inside the header card) */}
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end" dir="ltr">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+              >
+                {(user.displayName || user.email || '?')[0].toUpperCase()}
+              </div>
+              <div className="hidden md:flex flex-col">
+                 <span className="text-sm font-semibold text-white/70">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                {/* Sync indicator */}
+                {saving ? (
+                  <span className="flex items-center gap-1 text-[10px] text-amber-400/60 font-medium tracking-wider">
+                    <CloudOff size={10} /> SAVING
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400/60 font-medium tracking-wider">
+                    <Cloud size={10} /> SYNCED
+                  </span>
+                )}
+              </div>
+            </div>
+
             <button
               onClick={logout}
               className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-red-400/60 hover:text-red-400 transition-colors"
               style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.1)' }}
             >
               <LogOut size={14} />
-              Logout
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
 
-        {/* Section toggles */}
-        {showSettings && (
-          <div className="glass-card p-4 flex flex-wrap gap-2 animate-fade-in">
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                onClick={() => toggleSection(s.key)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                  v[s.key]
-                    ? 'text-violet-300 border-violet-500/30'
-                    : 'text-white/25 border-white/5'
-                }`}
-                style={{
-                  background: v[s.key] ? 'rgba(139,92,246,0.12)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${v[s.key] ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.05)'}`,
-                }}
-              >
-                {v[s.key] ? <Eye size={12} /> : <EyeOff size={12} />}
-                {s.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Hero Section */}
-        {v.hero && <HeroSection stats={stats} />}
-
-        {/* Row: Daily Action + Momentum + AI Coach */}
-        {(v.daily || v.momentum || v.coach) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {v.daily && (
-              <DailyActionPanel
-                stats={stats}
-                onMarkComplete={markTodayComplete}
-              />
-            )}
-            {v.momentum && <MomentumCard stats={stats} />}
-            {v.coach && <AICoachCard messages={stats.coachMessages} />}
-          </div>
-        )}
-
-        {/* Row: Pattern Insights + Gamification */}
-        {(v.patterns || v.gamification) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {v.patterns && <PatternInsights insights={stats.patternInsights} />}
-            {v.gamification && <GamificationPanel stats={stats} />}
-          </div>
-        )}
-
-        {/* Heatmap Calendar — Always visible */}
-        <HeatmapCalendar
-          enrichedData={enrichedData}
-          onToggleDay={toggleDay}
-          onUpdateWeight={updateWeight}
-          onUpdateBodyFat={updateBodyFat}
-        />
+        {/* Main Content Area */}
+        <div className="animate-fade-in" dir="ltr">
+          {activeTab === 'overview' && <LifeOverview />}
+          {activeTab === 'habits' && <HabitsTracker />}
+          {activeTab === 'gym' && (
+            <GymTracker
+              targetDays={targetDays}
+              setTargetDays={setTargetDays}
+              workoutSystem={workoutSystem}
+              setWorkoutSystem={setWorkoutSystem}
+              exportCSV={exportCSV}
+              stats={stats}
+              markTodayComplete={markTodayComplete}
+              enrichedData={enrichedData}
+              toggleDay={toggleDay}
+              updateWeight={updateWeight}
+              updateBodyFat={updateBodyFat}
+              updateSession={updateSession}
+              deleteSession={deleteSession}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

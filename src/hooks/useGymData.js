@@ -1,11 +1,14 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 /* ──────────────────────────────────────────── */
 /*  Generate initial 52-week data               */
 /* ──────────────────────────────────────────── */
 function generateInitialData() {
   const data = [];
-  const currentStart = new Date(2026, 0, 3); // Saturday, Jan 3, 2026
+  const currentStart = new Date(2026, 0, 3);
   const dateFormatter = new Intl.DateTimeFormat('en-US', {
     day: 'numeric',
     month: 'short',
@@ -100,7 +103,6 @@ function computeStats(enrichedData) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Today info
   let todayCompleted = false;
   let todayWeekIdx = -1;
   let todayDayIdx = -1;
@@ -126,7 +128,6 @@ function computeStats(enrichedData) {
         dayMissedCounts[dIdx]++;
       }
 
-      // Check if today
       if (
         dayObj.date.getFullYear() === today.getFullYear() &&
         dayObj.date.getMonth() === today.getMonth() &&
@@ -143,7 +144,7 @@ function computeStats(enrichedData) {
     });
   });
 
-  // ── Current Streak ──
+  // Current Streak
   let currentStreak = 0;
   for (let i = allDayStatuses.length - 1; i >= 0; i--) {
     const s = allDayStatuses[i].status;
@@ -155,7 +156,7 @@ function computeStats(enrichedData) {
     }
   }
 
-  // ── Longest Streak ──
+  // Longest Streak
   let longestStreak = 0;
   let tempStreak = 0;
   for (let i = 0; i < allDayStatuses.length; i++) {
@@ -169,7 +170,7 @@ function computeStats(enrichedData) {
     }
   }
 
-  // ── Success Rate ──
+  // Success Rate
   const resolvedDays = allDayStatuses.filter(d => d.status !== 'PENDING');
   const successDays = resolvedDays.filter(
     d => d.status === 'WORKOUT' || d.status === 'LOCKED_REST' || d.status === 'AUTO_REST'
@@ -178,13 +179,13 @@ function computeStats(enrichedData) {
     ? Math.round((successDays.length / resolvedDays.length) * 100)
     : 0;
 
-  // ── Discipline Score (0-100) ──
+  // Discipline Score
   const streakBonus = Math.min(currentStreak / 30, 1) * 35;
   const consistencyBonus = (successRate / 100) * 35;
   const goalMetBonus = Math.min(weeksGoalMet / 10, 1) * 30;
   const disciplineScore = Math.round(streakBonus + consistencyBonus + goalMetBonus);
 
-  // ── Momentum Metrics ──
+  // Momentum
   const failureDates = [];
   allDayStatuses.forEach((d) => {
     if (d.status === 'MISSED') failureDates.push(d.date);
@@ -209,7 +210,6 @@ function computeStats(enrichedData) {
     avgGapBetweenFailures = daysSinceLastFailure;
   }
 
-  // Risk level
   let riskLevel = 'low';
   if (failureDates.length > 0 && avgGapBetweenFailures > 0) {
     if (daysSinceLastFailure >= avgGapBetweenFailures * 0.9) {
@@ -219,14 +219,13 @@ function computeStats(enrichedData) {
     }
   }
 
-  // ── Pattern Insights ──
+  // Patterns
   const dayNames = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const maxDayCount = Math.max(...dayCounts);
   const bestDay = maxDayCount > 0 ? dayNames[dayCounts.indexOf(maxDayCount)] : 'N/A';
   const maxMissedCount = Math.max(...dayMissedCounts);
   const worstDay = maxMissedCount > 0 ? dayNames[dayMissedCounts.indexOf(maxMissedCount)] : 'N/A';
 
-  // Count streak breaks that happen after a streak > 7
   let streakBreaksAfterLong = 0;
   let countStreak = 0;
   for (let i = 0; i < allDayStatuses.length; i++) {
@@ -265,7 +264,7 @@ function computeStats(enrichedData) {
     patternInsights.push({ icon: '✨', text: 'No patterns detected yet — keep going!', color: 'text-blue-400' });
   }
 
-  // ── Gamification ──
+  // Gamification
   const xp = totalWorkouts * 25 + currentStreak * 10 + weeksGoalMet * 50;
   const level = Math.floor(xp / 500) + 1;
   const xpInLevel = xp % 500;
@@ -277,7 +276,6 @@ function computeStats(enrichedData) {
   ];
   const levelTitle = levelTitles[Math.min(level - 1, levelTitles.length - 1)];
 
-  // Monthly challenge: workout X days this month
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
   let monthlyWorkouts = 0;
@@ -292,7 +290,6 @@ function computeStats(enrichedData) {
   });
   const monthlyTarget = 20;
 
-  // Achievements
   const achievements = [
     { name: 'First Workout', desc: 'Complete your first workout', unlocked: totalWorkouts >= 1, icon: '🏋️' },
     { name: '7-Day Streak', desc: 'Maintain a 7-day streak', unlocked: longestStreak >= 7, icon: '🔥' },
@@ -304,7 +301,7 @@ function computeStats(enrichedData) {
     { name: 'Centurion', desc: 'Complete 100 workouts', unlocked: totalWorkouts >= 100, icon: '🦾' },
   ];
 
-  // ── AI Coach ──
+  // AI Coach
   const coachMessages = [];
   const daysToBreak = longestStreak - currentStreak;
   if (daysToBreak > 0 && daysToBreak <= 5) {
@@ -354,13 +351,10 @@ function computeStats(enrichedData) {
     leanMass,
     successRate,
     disciplineScore,
-    // Momentum
     daysSinceLastFailure,
     avgGapBetweenFailures,
     riskLevel,
-    // Patterns
     patternInsights,
-    // Gamification
     xp,
     level,
     levelTitle,
@@ -369,9 +363,7 @@ function computeStats(enrichedData) {
     monthlyWorkouts,
     monthlyTarget,
     achievements,
-    // AI Coach
     coachMessages,
-    // Today
     todayCompleted,
     todayWeekIdx,
     todayDayIdx,
@@ -379,11 +371,83 @@ function computeStats(enrichedData) {
 }
 
 /* ──────────────────────────────────────────── */
+/*  Firestore save/load helpers                 */
+/* ──────────────────────────────────────────── */
+function serializeForFirestore(data) {
+  return data.map(week => ({
+    week: week.week,
+    startDate: week.startDate,
+    days: week.days,
+    weight: week.weight,
+    bodyFat: week.bodyFat,
+  }));
+}
+
+/* ──────────────────────────────────────────── */
 /*  Main hook                                   */
 /* ──────────────────────────────────────────── */
 export default function useGymData() {
+  const { user } = useAuth();
   const [data, setData] = useState(generateInitialData);
   const [targetDays, setTargetDays] = useState(5);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Load user data from Firestore on login
+  useEffect(() => {
+    if (!user) {
+      setLoaded(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const saved = docSnap.data();
+          if (saved.gymData && Array.isArray(saved.gymData)) {
+            setData(saved.gymData);
+          }
+          if (saved.targetDays) {
+            setTargetDays(saved.targetDays);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading data:', err);
+      } finally {
+        setLoaded(true);
+      }
+    };
+
+    loadData();
+  }, [user]);
+
+  // Auto-save to Firestore when data changes (debounced)
+  useEffect(() => {
+    if (!user || !loaded) return;
+
+    setSaving(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const docRef = doc(db, 'users', user.uid);
+        await setDoc(docRef, {
+          gymData: serializeForFirestore(data),
+          targetDays,
+          updatedAt: new Date().toISOString(),
+          email: user.email,
+          displayName: user.displayName || '',
+        }, { merge: true });
+      } catch (err) {
+        console.error('Error saving data:', err);
+      } finally {
+        setSaving(false);
+      }
+    }, 1000); // 1 second debounce
+
+    return () => clearTimeout(timeout);
+  }, [data, targetDays, user, loaded]);
 
   const toggleDay = useCallback((weekIndex, dayIndex) => {
     setData(prev => {
@@ -431,5 +495,7 @@ export default function useGymData() {
     enrichedData,
     stats,
     markTodayComplete,
+    loaded,
+    saving,
   };
 }

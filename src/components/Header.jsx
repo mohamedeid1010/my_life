@@ -8,19 +8,17 @@ export default function Header({ targetDays, setTargetDays, onExport }) {
     <div className="glass-card-static flex flex-col lg:flex-row justify-between items-center p-5 gap-4 animate-slide-up">
       {/* Title */}
       <div className="flex items-center gap-4">
-        <div
-          className="p-3 rounded-xl shadow-lg"
+        <div 
+          className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg p-0.5"
           style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
         >
-          <Dumbbell size={28} className="text-white" />
+          <img src="/horizon-logo.png" alt="Horizon Logo" className="w-full h-full object-cover rounded-lg" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-white/95 tracking-tight">
-            Pro Gym Dashboard
+          <h1 className="text-xl font-black text-white/95 tracking-tight leading-tight">
+            Horizon
           </h1>
-          <p className="text-sm font-medium text-white/30">
-            Smart Streak &amp; Discipline System
-          </p>
+          <p className="text-xs font-semibold text-violet-400">Life Operating System</p>
         </div>
       </div>
 

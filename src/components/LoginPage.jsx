@@ -64,13 +64,13 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div
-            className="p-4 rounded-2xl shadow-lg mb-4 animate-pulse-glow"
+            className="w-20 h-20 rounded-2xl shadow-lg mb-4 p-1 animate-pulse-glow flex items-center justify-center overflow-hidden"
             style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
           >
-            <Dumbbell size={36} className="text-white" />
+            <img src="/horizon-logo.png" alt="Horizon Logo" className="w-full h-full object-cover rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-white/95 tracking-tight">
-            Pro Gym Dashboard
+            Horizon
           </h1>
           <p className="text-sm text-white/30 mt-1">
             {isLogin ? 'Welcome back! Sign in to continue' : 'Create your account'}

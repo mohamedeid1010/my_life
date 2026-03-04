@@ -26,7 +26,9 @@ function loadVisibility() {
   try {
     const saved = localStorage.getItem('gym_section_visibility');
     if (saved) return JSON.parse(saved);
-  } catch {}
+  } catch {
+    // Ignore error and fall back to defaults
+  }
   return { hero: true, daily: true, momentum: true, coach: true, patterns: true, gamification: true };
 }
 

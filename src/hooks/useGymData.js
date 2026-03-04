@@ -30,11 +30,9 @@ function generateInitialData() {
 /* ──────────────────────────────────────────── */
 /*  Enrich data with statuses & week info       */
 /* ──────────────────────────────────────────── */
-function computeEnrichedData(data, targetDays) {
+function computeEnrichedData(data, targetDays, today) {
   const startDate = new Date(2026, 0, 3);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  
   return data.map((week, wIdx) => {
     const weekWorkouts = week.days.filter(Boolean).length;
     const isGoalMet = weekWorkouts >= targetDays;
@@ -472,10 +470,13 @@ export default function useGymData() {
     setData(newData);
   };
 
-  const enrichedData = useMemo(
-    () => computeEnrichedData(data, targetDays),
-    [data, targetDays]
-  );
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  
+  const enrichedData = useMemo(() => {
+    const todayObj = new Date(todayStr);
+    todayObj.setHours(0, 0, 0, 0);
+    return computeEnrichedData(data, targetDays, todayObj);
+  }, [data, targetDays, todayStr]);
 
   const stats = useMemo(() => computeStats(enrichedData), [enrichedData]);
 

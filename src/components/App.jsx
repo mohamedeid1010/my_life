@@ -1,16 +1,16 @@
 import { useState } from 'react';
-import { useAuth } from './contexts/AuthContext';
-import useGymData from './hooks/useGymData';
-import useExportCSV from './hooks/useExportCSV';
-import LoginPage from './components/LoginPage';
-import Header from './components/Header';
-import HeroSection from './components/HeroSection';
-import DailyActionPanel from './components/DailyActionPanel';
-import MomentumCard from './components/MomentumCard';
-import AICoachCard from './components/AICoachCard';
-import PatternInsights from './components/PatternInsights';
-import GamificationPanel from './components/GamificationPanel';
-import HeatmapCalendar from './components/HeatmapCalendar';
+import { useAuth } from '../contexts/AuthContext';
+import useGymData from '../hooks/useGymData';
+import useExportCSV from '../hooks/useExportCSV';
+import LoginPage from './LoginPage';
+import Header from './Header';
+import HeroSection from './HeroSection';
+import DailyActionPanel from './DailyActionPanel';
+import MomentumCard from './MomentumCard';
+import AICoachCard from './AICoachCard';
+import PatternInsights from './PatternInsights';
+import GamificationPanel from './GamificationPanel';
+import HeatmapCalendar from './HeatmapCalendar';
 import { Settings, Eye, EyeOff, LogOut, Loader2, Cloud, CloudOff } from 'lucide-react';
 
 const SECTIONS = [

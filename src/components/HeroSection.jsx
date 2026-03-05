@@ -1,9 +1,13 @@
 import { Flame, Trophy, Target, Zap } from 'lucide-react';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 /**
  * Hero Section — Huge streak counter with sub-stats
  */
 export default function HeroSection({ stats }) {
+  const { language } = usePreferences();
+  const L = language;
   return (
     <div className="glass-card p-8 md:p-10 relative overflow-hidden animate-slide-up">
       {/* Background gradient orbs */}
@@ -33,31 +37,31 @@ export default function HeroSection({ stats }) {
           </span>
         </div>
         <span className="text-2xl md:text-3xl font-bold text-white/50 uppercase tracking-widest mt-2">
-          Days
+          {t('gym_streak', L)}
         </span>
 
         {/* Label */}
         <p className="text-sm text-white/30 mt-3 font-medium">
-          Current Discipline Streak
+          {t('current_streak', L)}
         </p>
 
         {/* Sub-stats row */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-8 mt-8">
           <SubStat
             icon={Trophy}
-            label="Longest"
-            value={`${stats.longestStreak} Days`}
+            label={t('longest', L)}
+            value={`${stats.longestStreak} ${t('gym_streak', L)}`}
             color="text-amber-400"
           />
           <SubStat
             icon={Target}
-            label="Success Rate"
+            label={t('success_rate', L)}
             value={`${stats.successRate}%`}
             color="text-emerald-400"
           />
           <SubStat
             icon={Zap}
-            label="Discipline"
+            label={t('discipline', L)}
             value={`${stats.disciplineScore}/100`}
             color="text-violet-400"
           />

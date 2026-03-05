@@ -1,10 +1,14 @@
 import React, { useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 /**
  * WeightProgressTable — Shows all weeks' weight & body fat in a scrollable table
  */
 export default function WeightProgressTable({ enrichedData, updateWeight, updateBodyFat }) {
+  const { language } = usePreferences();
+  const L = language;
   const rows = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -36,22 +40,22 @@ export default function WeightProgressTable({ enrichedData, updateWeight, update
     <div className="glass-card p-6 space-y-4">
       <div>
         <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">
-          ⚖️ Weight & Body Fat Progress
+          {t('weight_progress', L)}
         </h3>
-        <p className="text-xs text-white/30 font-semibold mt-0.5">Track your body composition week by week</p>
+        <p className="text-xs text-white/30 font-semibold mt-0.5">{t('track_composition', L)}</p>
       </div>
 
       <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/10">
-              <th className="text-left py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-white/30">Week</th>
-              <th className="text-left py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-white/30">Start</th>
-              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-fuchsia-400">Weight (kg)</th>
-              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-fuchsia-400">Change</th>
-              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-cyan-400">Body Fat (%)</th>
-              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-cyan-400">Change</th>
-              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-amber-400">Workouts</th>
+              <th className="text-left py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-white/30">{t('week', L)}</th>
+              <th className="text-left py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-white/30">{t('start', L)}</th>
+              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-fuchsia-400">{t('weight_kg', L)}</th>
+              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-fuchsia-400">{t('change', L)}</th>
+              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-cyan-400">{t('body_fat', L)}</th>
+              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-cyan-400">{t('change', L)}</th>
+              <th className="text-center py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-amber-400">{t('workouts', L)}</th>
             </tr>
           </thead>
           <tbody>

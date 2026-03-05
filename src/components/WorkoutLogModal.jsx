@@ -1,8 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { X, Save, Dumbbell, Trash2 } from 'lucide-react';
 import { WORKOUT_SYSTEMS } from '../config/workoutSystems';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, workoutSystem, existingSession }) {
+  const { language } = usePreferences();
+  const L = language;
   const systemConfig = WORKOUT_SYSTEMS[workoutSystem] || WORKOUT_SYSTEMS.ppl;
 
   const [sessionType, setSessionType] = useState(existingSession?.sessionType || systemConfig.sessions[0]?.value || '');
@@ -36,7 +40,7 @@ export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, wor
               <Dumbbell size={20} style={{ color: sessionMeta?.color || '#8b5cf6' }} />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white/90">Log Workout</h2>
+              <h2 className="text-lg font-black text-white/90">{t('log_workout', L)}</h2>
               <p className="text-xs text-white/40 font-semibold">{systemConfig.label}</p>
             </div>
           </div>
@@ -47,7 +51,7 @@ export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, wor
 
         {/* Session Type Selector */}
         <div>
-          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">What did you train today?</label>
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">{t('what_train', L)}</label>
           <div className="flex flex-wrap gap-2">
             {systemConfig.sessions.map(s => (
               <button
@@ -72,7 +76,7 @@ export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, wor
 
         {/* Single Total Value Input */}
         <div>
-          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">Total Value (kg)</label>
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">{t('total_value', L)}</label>
           <div className="flex items-center gap-3 bg-black/30 rounded-xl p-4 border border-white/5">
             <span className="text-3xl">🏋️</span>
             <input
@@ -87,16 +91,16 @@ export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, wor
             />
             <span className="text-lg font-bold text-white/30">kg</span>
           </div>
-          <p className="text-[10px] text-white/20 mt-1.5 text-center">Enter your total weight lifted or max weight for this session</p>
+          <p className="text-[10px] text-white/20 mt-1.5 text-center">{t('enter_total', L)}</p>
         </div>
 
         {/* Notes */}
         <div>
-          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">Notes (optional)</label>
+          <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">{t('notes', L)}</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
-            placeholder="How was the session? Any PRs?"
+            placeholder={t('notes_placeholder', L)}
             rows={2}
             className="w-full bg-white/5 px-3 py-2 rounded-lg text-sm text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-violet-500/30 resize-none"
           />
@@ -122,7 +126,7 @@ export default function WorkoutLogModal({ isOpen, onClose, onSave, onDelete, wor
             }}
           >
             <Save size={18} />
-            Save Workout
+            {t('save_workout', L)}
           </button>
         </div>
       </div>

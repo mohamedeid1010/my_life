@@ -163,20 +163,49 @@ function computeHabitStats(habit) {
   };
 }
 
+/* ──────────────────────────────────────────── */
+/*  localStorage cache helpers                   */
+/* ──────────────────────────────────────────── */
+const HABITS_CACHE_KEY = 'herizon_habits_cache';
+
+function loadHabitsFromCache(uid) {
+  try {
+    const raw = localStorage.getItem(`${HABITS_CACHE_KEY}_${uid}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveHabitsToCache(uid, habits) {
+  try {
+    localStorage.setItem(`${HABITS_CACHE_KEY}_${uid}`, JSON.stringify({
+      smartHabits: habits,
+      cachedAt: Date.now(),
+    }));
+  } catch { /* localStorage full */ }
+}
+
 export default function useHabitsData() {
   const { user } = useAuth();
   
-  // habits: Array of habit objects
   const [habits, setHabits] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Load: localStorage FIRST (instant), then Firestore (background)
   useEffect(() => {
     if (!user) {
       setLoaded(false);
       return;
     }
 
+    // Step 1: Instant load from cache
+    const cached = loadHabitsFromCache(user.uid);
+    if (cached && cached.smartHabits && Array.isArray(cached.smartHabits)) {
+      setHabits(cached.smartHabits);
+      setLoaded(true); // Show UI immediately
+    }
+
+    // Step 2: Fetch from Firestore in background
     const loadData = async () => {
       try {
         const docRef = doc(db, 'users', user.uid);
@@ -186,8 +215,8 @@ export default function useHabitsData() {
           const saved = docSnap.data();
           if (saved.smartHabits && Array.isArray(saved.smartHabits)) {
             setHabits(saved.smartHabits);
+            saveHabitsToCache(user.uid, saved.smartHabits);
           } else if (saved.habitsData && typeof saved.habitsData === 'object') {
-            // Migration from previous v1 single-habit model to v2 multi-habit model
             const migratedHabit = {
               id: 'legacy-1',
               name: 'Daily Momentum',
@@ -202,6 +231,7 @@ export default function useHabitsData() {
               }, {})
             };
             setHabits([migratedHabit]);
+            saveHabitsToCache(user.uid, [migratedHabit]);
           }
         }
       } catch (err) {
@@ -214,10 +244,14 @@ export default function useHabitsData() {
     loadData();
   }, [user]);
 
-  // Save to Firebase (Debounced)
+  // Save to BOTH localStorage + Firestore
   useEffect(() => {
     if (!user || !loaded) return;
 
+    // Immediate localStorage save
+    saveHabitsToCache(user.uid, habits);
+
+    // Debounced Firestore save
     setSaving(true);
     const timeout = setTimeout(async () => {
       try {

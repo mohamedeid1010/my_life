@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 /**
  * GitHub-style Heatmap Calendar — Dark Theme
@@ -64,7 +66,14 @@ export default function HeatmapCalendar({
   onOpenWorkoutLog,
 }) {
   const [tooltip, setTooltip] = useState(null);
+  const { language } = usePreferences();
+  const L = language;
+  const isAr = L === 'ar';
   const monthLabels = getMonthLabels(enrichedData);
+
+  const dayLabels = isAr
+    ? ['سبت', 'أحد', 'اثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة']
+    : ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
   return (
     <div className="glass-card-static p-5 md:p-7 animate-slide-up" style={{ animationDelay: '0.25s' }}>
@@ -72,7 +81,7 @@ export default function HeatmapCalendar({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-white/90 tracking-tight">
-            Workout Activity
+            {t('workout_activity', L)}
           </h2>
           <p className="text-xs text-white/30 font-medium mt-1">
             Click any day to mark as done · Completed weeks glow with a 🏆
@@ -104,7 +113,7 @@ export default function HeatmapCalendar({
           <div className="flex gap-0">
             {/* Day Labels */}
             <div className="flex flex-col gap-[4px] mr-2 pt-0">
-              {DAY_LABELS.map((day) => (
+              {dayLabels.map((day) => (
                 <div
                   key={day}
                   className="h-[20px] flex items-center text-[11px] font-bold text-white/25 leading-none select-none"
@@ -205,19 +214,19 @@ export default function HeatmapCalendar({
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#60a5fa' }} />
-            Break
+            {isAr ? 'راحة' : 'Break'}
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#0d9488' }} />
-            Rest (Goal Met)
+            {isAr ? 'استراحة (الهدف متحقق)' : 'Rest (Goal Met)'}
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: 'rgba(239,68,68,0.30)' }} />
-            Missed
+            {isAr ? 'فائت' : 'Missed'}
           </span>
           <span className="flex items-center gap-1.5">
             <Trophy size={13} className="text-amber-500" />
-            Goal Met
+            {t('goal_met', L)}
           </span>
         </div>
       </div>

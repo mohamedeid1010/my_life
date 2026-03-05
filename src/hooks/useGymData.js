@@ -384,6 +384,29 @@ function serializeForFirestore(data) {
 }
 
 /* ──────────────────────────────────────────── */
+/*  localStorage cache helpers                   */
+/* ──────────────────────────────────────────── */
+const CACHE_KEY = 'herizon_gym_cache';
+
+function loadFromCache(uid) {
+  try {
+    const raw = localStorage.getItem(`${CACHE_KEY}_${uid}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveToCache(uid, gymData, targetDays, workoutSystem) {
+  try {
+    localStorage.setItem(`${CACHE_KEY}_${uid}`, JSON.stringify({
+      gymData: serializeForFirestore(gymData),
+      targetDays,
+      workoutSystem,
+      cachedAt: Date.now(),
+    }));
+  } catch { /* localStorage full — ignore */ }
+}
+
+/* ──────────────────────────────────────────── */
 /*  Main hook                                   */
 /* ──────────────────────────────────────────── */
 export default function useGymData() {
@@ -394,13 +417,23 @@ export default function useGymData() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Load user data from Firestore on login
+  // Load: localStorage FIRST (instant), then Firestore (background merge)
   useEffect(() => {
     if (!user) {
       setLoaded(false);
       return;
     }
 
+    // Step 1: Instant load from localStorage cache
+    const cached = loadFromCache(user.uid);
+    if (cached) {
+      if (cached.gymData && Array.isArray(cached.gymData)) setData(cached.gymData);
+      if (cached.targetDays) setTargetDays(cached.targetDays);
+      if (cached.workoutSystem) setWorkoutSystem(cached.workoutSystem);
+      setLoaded(true); // Show UI immediately with cached data
+    }
+
+    // Step 2: Fetch from Firestore in background
     const loadData = async () => {
       try {
         const docRef = doc(db, 'users', user.uid);
@@ -411,15 +444,15 @@ export default function useGymData() {
           if (saved.gymData && Array.isArray(saved.gymData)) {
             setData(saved.gymData);
           }
-          if (saved.targetDays) {
-            setTargetDays(saved.targetDays);
-          }
-          if (saved.workoutSystem) {
-            setWorkoutSystem(saved.workoutSystem);
-          }
+          if (saved.targetDays) setTargetDays(saved.targetDays);
+          if (saved.workoutSystem) setWorkoutSystem(saved.workoutSystem);
+
+          // Update cache with fresh Firestore data
+          saveToCache(user.uid, saved.gymData || [], saved.targetDays || 5, saved.workoutSystem || 'ppl');
         }
       } catch (err) {
         console.error('Error loading data:', err);
+        // If Firestore fails but we have cache, that's fine — user sees cached data
       } finally {
         setLoaded(true);
       }
@@ -428,10 +461,14 @@ export default function useGymData() {
     loadData();
   }, [user]);
 
-  // Auto-save to Firestore when data changes (debounced)
+  // Auto-save to BOTH Firestore + localStorage when data changes
   useEffect(() => {
     if (!user || !loaded) return;
 
+    // Always save to localStorage immediately (sync, fast)
+    saveToCache(user.uid, data, targetDays, workoutSystem);
+
+    // Save to Firestore (debounced)
     setSaving(true);
     const timeout = setTimeout(async () => {
       try {
@@ -449,7 +486,7 @@ export default function useGymData() {
       } finally {
         setSaving(false);
       }
-    }, 1000); // 1 second debounce
+    }, 1000);
 
     return () => clearTimeout(timeout);
   }, [data, targetDays, workoutSystem, user, loaded]);

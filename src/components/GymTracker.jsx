@@ -1,5 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { Settings, Eye, EyeOff } from 'lucide-react';
+import { Settings, Eye, EyeOff, ChevronUp, ChevronDown } from 'lucide-react';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 import Header from './Header';
 import HeroSection from './HeroSection';
 import DailyActionPanel from './DailyActionPanel';
@@ -12,13 +14,13 @@ import WorkoutLogModal from './WorkoutLogModal';
 import WorkoutProgressDashboard from './WorkoutProgressDashboard';
 import WeightProgressTable from './WeightProgressTable';
 
-const SECTIONS = [
-  { key: 'hero', label: 'Streak Counter' },
-  { key: 'daily', label: 'Daily Action' },
-  { key: 'momentum', label: 'Momentum' },
-  { key: 'coach', label: 'AI Coach' },
-  { key: 'patterns', label: 'Pattern Insights' },
-  { key: 'gamification', label: 'Gamification' },
+const SECTIONS_KEYS = [
+  { key: 'hero', tKey: 'streak_counter' },
+  { key: 'daily', tKey: 'daily_action' },
+  { key: 'momentum', tKey: 'momentum' },
+  { key: 'coach', tKey: 'ai_coach' },
+  { key: 'patterns', tKey: 'pattern_insights' },
+  { key: 'gamification', tKey: 'gamification' },
 ];
 
 function loadVisibility() {
@@ -45,8 +47,16 @@ export default function GymTracker({
   updateSession,
   deleteSession,
 }) {
+  const { language } = usePreferences();
+  const L = language;
   const [visibility, setVisibility] = useState(loadVisibility);
   const [showSettings, setShowSettings] = useState(false);
+  const [sectionOrder, setSectionOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gym_section_order');
+      return saved ? JSON.parse(saved) : SECTIONS_KEYS.map(s => s.key);
+    } catch { return SECTIONS_KEYS.map(s => s.key); }
+  });
 
   // Modal state for workout logging
   const [logModal, setLogModal] = useState({ open: false, weekIdx: -1, dayIdx: -1, existing: null });
@@ -54,6 +64,24 @@ export default function GymTracker({
   // Find current week index
   const currentWeekIdx = enrichedData.findIndex(w => w.isCurrentWeek);
   const currentWeek = currentWeekIdx >= 0 ? enrichedData[currentWeekIdx] : null;
+
+  const v = visibility;
+  const toggleSection = useCallback((key) => {
+    setVisibility(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('gym_section_visibility', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const moveSection = (idx, dir) => {
+    const arr = [...sectionOrder];
+    const target = idx + dir;
+    if (target < 0 || target >= arr.length) return;
+    [arr[idx], arr[target]] = [arr[target], arr[idx]];
+    setSectionOrder(arr);
+    localStorage.setItem('gym_section_order', JSON.stringify(arr));
+  };
 
   // Open modal when marking today — instead of just toggling
   const handleMarkToday = useCallback(() => {
@@ -85,14 +113,6 @@ export default function GymTracker({
     }
   }, [logModal.weekIdx, logModal.dayIdx, deleteSession]);
 
-  const toggleSection = (key) => {
-    const updated = { ...visibility, [key]: !visibility[key] };
-    setVisibility(updated);
-    localStorage.setItem('gym_section_visibility', JSON.stringify(updated));
-  };
-
-  const v = visibility;
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -108,14 +128,14 @@ export default function GymTracker({
       {currentWeek && (
         <div className="glass-card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest">Week {currentWeek.week} — Body Stats</h3>
-            <p className="text-xs text-white/30 mt-0.5">Log your weight and body fat for this week</p>
+            <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest">{t('week', L)} {currentWeek.week} — {t('body_stats', L)}</h3>
+            <p className="text-xs text-white/30 mt-0.5">{t('log_weight_fat', L)}</p>
           </div>
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5">
               <span className="text-lg">⚖️</span>
               <div className="flex flex-col">
-                <label className="text-[10px] uppercase font-bold text-fuchsia-400">Weight (kg)</label>
+                <label className="text-[10px] uppercase font-bold text-fuchsia-400">{t('weight_kg', L)}</label>
                 <input
                   type="number"
                   min="30" max="300" step="0.1"
@@ -129,7 +149,7 @@ export default function GymTracker({
             <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5">
               <span className="text-lg">📊</span>
               <div className="flex flex-col">
-                <label className="text-[10px] uppercase font-bold text-cyan-400">Body Fat (%)</label>
+                <label className="text-[10px] uppercase font-bold text-cyan-400">{t('body_fat', L)}</label>
                 <input
                   type="number"
                   min="1" max="60" step="0.1"
@@ -142,7 +162,7 @@ export default function GymTracker({
             </div>
             {stats.latestWeight && stats.latestWeight !== '-' && (
               <div className="flex flex-col items-center">
-                <span className="text-[10px] text-white/30 uppercase font-bold">Change</span>
+                <span className="text-[10px] text-white/30 uppercase font-bold">{t('change', L)}</span>
                 <span className={`font-black text-base ${parseFloat(stats.weightDiff) < 0 ? 'text-emerald-400' : parseFloat(stats.weightDiff) > 0 ? 'text-red-400' : 'text-white/50'}`}>
                   {parseFloat(stats.weightDiff) > 0 ? '+' : ''}{stats.weightDiff} kg
                 </span>
@@ -160,57 +180,86 @@ export default function GymTracker({
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <Settings size={14} />
-          Sections
+          {t('sections', L)}
         </button>
       </div>
 
       {showSettings && (
-        <div className="glass-card p-4 flex flex-wrap gap-2 animate-fade-in">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => toggleSection(s.key)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                v[s.key]
-                  ? 'text-violet-300 border-violet-500/30'
-                  : 'text-white/25 border-white/5'
-              }`}
-              style={{
-                background: v[s.key] ? 'rgba(139,92,246,0.12)' : 'rgba(255,255,255,0.03)',
-                border: `1px solid ${v[s.key] ? 'rgba(139,92,246,0.3)' : 'rgba(255,255,255,0.05)'}`,
-              }}
-            >
-              {v[s.key] ? <Eye size={12} /> : <EyeOff size={12} />}
-              {s.label}
-            </button>
-          ))}
+        <div className="glass-card p-4 space-y-2 animate-fade-in">
+          {sectionOrder.map((key, idx) => {
+            const sec = SECTIONS_KEYS.find(s => s.key === key);
+            if (!sec) return null;
+            return (
+              <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+                v[key] ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'
+              }`}>
+                <span className={`flex-1 text-sm font-bold ${v[key] ? 'text-white/70' : 'text-white/30'}`}>
+                  {t(sec.tKey, L)}
+                </span>
+                <button onClick={() => toggleSection(key)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                  {v[key] ? <Eye size={14} className="text-emerald-400/60" /> : <EyeOff size={14} className="text-white/20" />}
+                </button>
+                <div className="flex flex-col gap-0.5">
+                  <button onClick={() => moveSection(idx, -1)} disabled={idx === 0} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                    <ChevronUp size={12} className="text-white/40" />
+                  </button>
+                  <button onClick={() => moveSection(idx, 1)} disabled={idx === sectionOrder.length - 1} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                    <ChevronDown size={12} className="text-white/40" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Hero Section */}
-      {v.hero && <HeroSection stats={stats} />}
+      {/* Dynamically rendered sections based on order */}
+      {(() => {
+        const rendered = [];
+        const handled = new Set();
 
-      {/* Row: Daily Action + Momentum + AI Coach */}
-      {(v.daily || v.momentum || v.coach) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {v.daily && (
-            <DailyActionPanel
-              stats={stats}
-              onMarkComplete={handleMarkToday}
-            />
-          )}
-          {v.momentum && <MomentumCard stats={stats} />}
-          {v.coach && <AICoachCard messages={stats.coachMessages} />}
-        </div>
-      )}
+        for (const key of sectionOrder) {
+          if (handled.has(key) || !v[key]) continue;
 
-      {/* Row: Pattern Insights + Gamification */}
-      {(v.patterns || v.gamification) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {v.patterns && <PatternInsights insights={stats.patternInsights} />}
-          {v.gamification && <GamificationPanel stats={stats} />}
-        </div>
-      )}
+          if (key === 'hero') {
+            rendered.push(<HeroSection key={key} stats={stats} />);
+            handled.add(key);
+          }
+          // Group daily + momentum + coach into a 3-col grid
+          else if (['daily', 'momentum', 'coach'].includes(key) && !handled.has('_row1')) {
+            const row1Items = ['daily', 'momentum', 'coach'].filter(k => v[k]);
+            if (row1Items.length > 0) {
+              rendered.push(
+                <div key="_row1" className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {v.daily && <DailyActionPanel stats={stats} onMarkComplete={handleMarkToday} />}
+                  {v.momentum && <MomentumCard stats={stats} />}
+                  {v.coach && <AICoachCard messages={stats.coachMessages} />}
+                </div>
+              );
+            }
+            handled.add('_row1');
+            handled.add('daily');
+            handled.add('momentum');
+            handled.add('coach');
+          }
+          // Group patterns + gamification into a 2-col grid
+          else if (['patterns', 'gamification'].includes(key) && !handled.has('_row2')) {
+            const row2Items = ['patterns', 'gamification'].filter(k => v[k]);
+            if (row2Items.length > 0) {
+              rendered.push(
+                <div key="_row2" className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {v.patterns && <PatternInsights insights={stats.patternInsights} />}
+                  {v.gamification && <GamificationPanel stats={stats} />}
+                </div>
+              );
+            }
+            handled.add('_row2');
+            handled.add('patterns');
+            handled.add('gamification');
+          }
+        }
+        return rendered;
+      })()}
 
       {/* Heatmap Calendar — Always visible */}
       <HeatmapCalendar

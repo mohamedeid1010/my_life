@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { X, Target, Heart, Briefcase, Sparkles } from 'lucide-react';
+import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
 
 const CATEGORIES = [
   { id: 'health', label: 'Health', icon: <Heart size={16} /> },
+  { id: 'fitness', label: 'Fitness', icon: <Dumbbell size={16} /> },
   { id: 'productivity', label: 'Productivity', icon: <Briefcase size={16} /> },
+  { id: 'learning', label: 'Learning', icon: <BookOpen size={16} /> },
   { id: 'spirituality', label: 'Spirituality', icon: <Sparkles size={16} /> },
+  { id: 'islamic', label: 'Islamic', icon: <Moon size={16} /> },
+  { id: 'social', label: 'Social', icon: <Users size={16} /> },
+  { id: 'finance', label: 'Finance', icon: <DollarSign size={16} /> },
+  { id: 'mindfulness', label: 'Mindfulness', icon: <Sparkles size={16} /> },
   { id: 'other', label: 'Other', icon: <Target size={16} /> },
 ];
 

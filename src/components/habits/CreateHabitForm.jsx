@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Target, Heart, Briefcase, Sparkles } from 'lucide-react';
+import EmojiPicker from './EmojiPicker';
 
 const CATEGORIES = [
   { id: 'health', label: 'Health', icon: <Heart size={16} /> },
@@ -8,11 +9,10 @@ const CATEGORIES = [
   { id: 'other', label: 'Other', icon: <Target size={16} /> },
 ];
 
-const ICONS = ['💧', '📚', '🏃‍♂️', '🧘‍♀️', '🍎', '✍️', ' 기도', '🛌', '💪', '💻'];
-
 export default function CreateHabitForm({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('💧');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [category, setCategory] = useState('health');
   const type = 'daily'; // daily, weekly_target
   const [targetType, setTargetType] = useState('boolean'); // boolean, numeric
@@ -67,15 +67,26 @@ export default function CreateHabitForm({ onClose, onSave }) {
           <div className="flex gap-4 items-end">
             <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Icon</label>
-              <div className="relative group">
-                <select 
-                  value={icon} 
-                  onChange={e => setIcon(e.target.value)}
-                  className="w-14 h-14 bg-black/30 border border-white/10 rounded-xl text-3xl flex items-center justify-center text-center appearance-none focus:outline-none focus:border-violet-500 transition-colors"
+              <div className="relative">
+                <button 
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="w-14 h-14 bg-black/30 border border-white/10 rounded-xl text-3xl flex items-center justify-center hover:border-violet-500/50 focus:outline-none focus:border-violet-500 transition-all hover:scale-105 active:scale-95"
                 >
-                  {ICONS.map(i => <option key={i} value={i}>{i}</option>)}
-                </select>
-                <div className="absolute inset-0 rounded-xl bg-violet-400/20 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                  {icon}
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute top-full left-0 mt-2 z-50">
+                    <div className="fixed inset-0" onClick={() => setShowEmojiPicker(false)} />
+                    <div className="relative">
+                      <EmojiPicker
+                        value={icon}
+                        onChange={(emoji) => { setIcon(emoji); setShowEmojiPicker(false); }}
+                        onClose={() => setShowEmojiPicker(false)}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

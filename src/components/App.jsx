@@ -58,7 +58,6 @@ export default function App() {
    * `loading` is true while Firebase checks the initial auth state.
    */
   const user = useAuthStore((s) => s.user);
-  const authLoading = useAuthStore((s) => s.loading);
   const logout = useAuthStore((s) => s.logout);
 
   /**
@@ -112,19 +111,9 @@ export default function App() {
     }
   }, [isOnline, pendingCount]);
 
-  if (authLoading) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center font-sans"
-        style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-      >
-        <div className="flex flex-col items-center gap-4 animate-fade-in">
-          <Loader2 size={40} className="text-violet-400 animate-spin" />
-          <p className="text-sm text-white/30 font-semibold">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // Thanks to Zustand 'persist', auth state is instantly hydrated.
+  // We no longer block the initial render. The background Firebase listener
+  // will seamlessly update the user state if the session expired.
 
   if (!user) {
     return (
@@ -209,23 +198,36 @@ function Dashboard({ user, logout }) {
       className="min-h-screen font-sans"
       style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
     >
-      {/* ═══ Professional Top Navbar ═══ */}
+      {/* ═══ Professional Floating Glass Navbar ═══ */}
       <nav
-        className="sticky top-0 z-40 px-4 md:px-6 py-3"
-        style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border-glass)' }}
+        className="sticky top-4 z-50 px-4 md:px-0 mx-auto max-w-7xl transition-all duration-300"
       >
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        {/* Glass Pill Container */}
+        <div 
+          className="flex items-center justify-between px-4 py-3 md:px-6 rounded-2xl md:rounded-full backdrop-blur-xl border"
+          style={{ 
+            background: 'rgba(255, 255, 255, 0.03)',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
+            borderColor: 'var(--border-glass)'
+          }}
+        >
           {/* Logo + Nav Tabs */}
           <div className="flex items-center gap-2 md:gap-6">
             {/* Logo */}
             <div className="flex items-center gap-2 mr-2 md:mr-4">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
+                className="w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl flex items-center justify-center p-1 md:p-1.5 shadow-sm"
+                style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(99,102,241,0.1))' }}
               >
-                <span className="text-white text-sm font-black">H</span>
+                <img 
+                  src="/horizon-logo.png" 
+                  alt="Horizon" 
+                  className="w-full h-full object-contain brightness-110"
+                />
               </div>
-              <span className="hidden md:block text-base font-black text-white/80 tracking-tight">Horizon</span>
+              <span className="hidden md:block text-base md:text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                Horizon
+              </span>
             </div>
 
             {/* Dynamic Navigation tabs */}

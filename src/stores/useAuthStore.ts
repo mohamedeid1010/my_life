@@ -12,6 +12,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -100,13 +101,16 @@ async function fetchUserRole(uid: string): Promise<UserRole> {
 
 /* ─────────────── Store Definition ─────────────── */
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  // ── Initial State ──
-  user: null,
-  loading: true,
-  error: null,
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
+      // ── Initial State ──
+      // loading defaults to false since we trust persisted user cache instantly
+      user: null,
+      loading: false,
+      error: null,
 
-  // ── Actions ──
+      // ── Actions ──
 
   loginWithEmail: async (email: string, password: string) => {
     set({ loading: true, error: null });
@@ -185,4 +189,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
     return unsubscribe;
   },
+}),
+{
+  name: 'herizon-auth-cache', // unique name for localStorage
+  partialize: (state) => ({ user: state.user }), // only persist the user object, not loading/error
 }));

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, User, Palette, Upload, LogOut, Navigation, ChevronUp, ChevronDown, Eye, EyeOff, GripVertical } from 'lucide-react';
 import usePreferences from '../hooks/usePreferences';
+import { useAuthStore } from '../stores/useAuthStore';
 import { t } from '../config/translations';
 
 export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, onNavConfigChange, allNavPages }) {
@@ -9,6 +10,8 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
     theme, updateTheme,
     language, updateLanguage,
   } = usePreferences();
+  
+  const user = useAuthStore((s) => s.user);
 
   const L = language;
   const [activeTab, setActiveTab] = useState('account');
@@ -152,6 +155,9 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
+                    {user?.email && (
+                      <span className="text-xs font-medium text-white/50 mb-1">{user.email}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

@@ -562,16 +562,24 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     }));
 
     const logRef = doc(db, `users/${uid}/habits/${habitId}/logs/${dateStr}`);
+    const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
     const payload = { ...entryData, loggedAt: serverTimestamp() };
 
     if (isOnline) {
       try {
-        await setDoc(logRef, payload, { merge: true });
+        const batch = writeBatch(db);
+        // 1. Write the log entry
+        batch.set(logRef, payload, { merge: true });
+        // 2. Touch the parent habit so onSnapshot fires on other devices
+        batch.set(habitRef, { updatedAt: serverTimestamp() }, { merge: true });
+        await batch.commit();
       } catch (err) {
         console.error("Failed to log entry", err);
       }
     } else {
       useSyncStore.getState().enqueueAction('HABIT_LOG_ENTRY', { path: `users/${uid}/habits/${habitId}/logs/${dateStr}`, data: payload });
+      // We also enqueue the parent update so it syncs later
+      useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${habitId}`, data: { updatedAt: new Date().toISOString() }});
     }
   },
 }));

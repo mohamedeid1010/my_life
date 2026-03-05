@@ -83,7 +83,7 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
           {/* Header Row (Days) */}
           <div className="flex px-4 mb-2">
             <div className="w-48 shrink-0" /> {/* Spacer for habit names */}
-            <div className="flex gap-1.5 shrink-0">
+            <div className="flex gap-1.5 pl-4 shrink-0">
               {days.map(day => (
                 <div 
                   key={day.dateStr}

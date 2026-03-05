@@ -14,7 +14,7 @@
 
 import { create } from 'zustand';
 import { 
-  collection, doc, setDoc, getDocs, deleteDoc, 
+  collection, doc, setDoc, getDocs, getDocsFromServer, deleteDoc, 
   onSnapshot, query, where, writeBatch, serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -420,19 +420,35 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     const habitsRef = collection(db, `users/${uid}/habits`);
     const q = query(habitsRef); // Could add where("isHidden", "==", false) here if we never need to show hidden habits
 
-    // Attach real-time listener to habits
+    // 1. Force a server fetch first to bypass stubborn IndexedDB tab persistence
+    getDocsFromServer(q).then(async (snapshot) => {
+      const habitsData: HabitRaw[] = [];
+      const promises = snapshot.docs.map(async (habitDoc) => {
+        const habit = habitDoc.data() as HabitRaw;
+        habit.id = habitDoc.id;
+        const logsRef = collection(db, `users/${uid}/habits/${habitDoc.id}/logs`);
+        const logsSnapshot = await getDocsFromServer(logsRef).catch(() => getDocs(logsRef));
+        const history: Record<string, HabitEntry> = {};
+        logsSnapshot.forEach(logDoc => { history[logDoc.id] = logDoc.data() as HabitEntry; });
+        habit.history = history;
+        habitsData.push(habit);
+      });
+      await Promise.all(promises);
+      set({ habits: habitsData, loaded: true });
+    }).catch(err => {
+      console.warn("[HabitStore] Server pull failed, falling back to cache.", err);
+    });
+
+    // 2. Attach real-time listener to habits
     const unsubscribe = onSnapshot(q, async (snapshot) => {
+      // By default, onSnapshot uses whichever is available (cache/server)
+      // but since we forced a server pull above, this is now in sync.
       const habitsData: HabitRaw[] = [];
 
-      // For each habit, we also need to fetch its logs
-      // Since logs are in a subcollection, we read them when the habit updates
-      // Note: A more scalable approach for thousands of logs is to only read logs for the current visible timeframe,
-      // but for now we fetch all logs to compute absolute streaks.
       const promises = snapshot.docs.map(async (habitDoc) => {
         const habit = habitDoc.data() as HabitRaw;
         habit.id = habitDoc.id;
         
-        // Fetch logs subcollection 
         const logsRef = collection(db, `users/${uid}/habits/${habitDoc.id}/logs`);
         const logsSnapshot = await getDocs(logsRef);
         
@@ -446,7 +462,6 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       });
 
       await Promise.all(promises);
-      
       set({ habits: habitsData, loaded: true });
     }, (error) => {
       console.error("[HabitStore] Real-time sync error:", error);

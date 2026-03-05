@@ -10,8 +10,9 @@
 
 import { create } from 'zustand';
 import { 
-  doc, setDoc, deleteDoc, collection, 
-  onSnapshot, query, serverTimestamp 
+  collection, doc, setDoc, deleteDoc, 
+  onSnapshot, query, serverTimestamp, 
+  getDocFromServer, getDocsFromServer 
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useSyncStore } from './useSyncStore';
@@ -405,8 +406,27 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
     set({ loaded: false });
 
-    // 1. Subscribe to profile/metrics (targetDays, workoutSystem, weeklyWeights)
     const profileRef = doc(db, `users/${uid}/gym_profile/main`);
+    
+    // 1. Force server fetch first to bypass stubborn IndexedDB tab persistence
+    getDocFromServer(profileRef).then(docSnap => {
+      if (docSnap.exists()) {
+        const d = docSnap.data();
+        set({ targetDays: d.targetDays || 5, workoutSystem: d.workoutSystem || 'ppl' });
+        set((state) => {
+          const newData = [...state.data];
+          const weights = d.weeklyWeights || {};
+          const bodyFats = d.weeklyBodyFats || {};
+          for (let i = 0; i < 52; i++) {
+            if (weights[i] !== undefined) newData[i].weight = weights[i];
+            if (bodyFats[i] !== undefined) newData[i].bodyFat = bodyFats[i];
+          }
+          return { data: newData };
+        });
+      }
+    }).catch(err => console.warn("[GymStore] Server pull failed for profile.", err));
+
+    // 2. Subscribe to profile/metrics real-time
     const unsubProfile = onSnapshot(profileRef, (docSnap) => {
       if (docSnap.exists()) {
         const d = docSnap.data();
@@ -427,9 +447,34 @@ export const useGymStore = create<GymStore>((set, get) => ({
       }
     });
 
-    // 2. Subscribe to logs subcollection
+    // 3. Force server fetch for logs
     const logsRef = collection(db, `users/${uid}/gym_logs`);
     const q = query(logsRef);
+    
+    getDocsFromServer(q).then(snapshot => {
+      set((state) => {
+        const newData = generateInitialData();
+        for (let i = 0; i < 52; i++) {
+          newData[i].weight = state.data[i].weight;
+          newData[i].bodyFat = state.data[i].bodyFat;
+        }
+        snapshot.docs.forEach((logDoc) => {
+          const l = logDoc.data();
+          const logDate = new Date(l.dateStr);
+          logDate.setHours(0, 0, 0, 0);
+          const daysDiff = Math.floor((logDate.getTime() - YEAR_START.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysDiff >= 0 && daysDiff < 364) {
+            const weekIndex = Math.floor(daysDiff / 7);
+            const dayIndex = daysDiff % 7;
+            newData[weekIndex].days[dayIndex] = l.isDone || false;
+            if (l.session) newData[weekIndex].sessions[dayIndex] = l.session;
+          }
+        });
+        return { data: newData, loaded: true };
+      });
+    }).catch(err => console.warn("[GymStore] Server pull failed for logs.", err));
+
+    // 4. Subscribe to logs subcollection real-time
     const unsubLogs = onSnapshot(q, (snapshot) => {
       set((state) => {
         // Start from a fresh template but copy over the weights/fats from current state

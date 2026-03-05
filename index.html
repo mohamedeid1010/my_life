@@ -1,28 +1,133 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/horizon-logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
+    />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- ═══ SEO ═══ -->
+    <title>Horizon — Life Tracking & Habit Management</title>
     <meta
       name="description"
-      content="Horizon — Track your habits, discipline, and daily goals with AI coaching."
+      content="Track your habits, gym workouts, discipline streaks and daily goals with AI coaching. Build consistency and master your life with Horizon."
     />
-    <title>Horizon</title>
+    <meta
+      name="keywords"
+      content="habits, tracker, gym, workout, discipline, goals, AI coach, productivity"
+    />
+    <meta name="author" content="Horizon" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- ═══ Open Graph (Social sharing) ═══ -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="Horizon — Life Tracking & Habit Management"
+    />
+    <meta
+      property="og:description"
+      content="Track your habits, gym workouts, discipline streaks and daily goals with AI coaching."
+    />
+    <meta property="og:url" content="https://my-life-3519c.web.app" />
+    <meta property="og:site_name" content="Horizon" />
+    <meta property="og:image" content="/horizon-logo.png" />
+
+    <!-- ═══ PWA & Theming ═══ -->
+    <meta name="theme-color" content="#0a0a0f" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Horizon" />
+    <link rel="apple-touch-icon" href="/horizon-logo.png" />
+
+    <!-- ═══ Favicon ═══ -->
+    <link rel="icon" type="image/png" href="/horizon-logo.png" />
+
+    <!-- ═══ Fonts (preconnect for speed) ═══ -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
       rel="stylesheet"
     />
+
+    <!-- ═══ Critical Inline CSS (prevents FOUC) ═══ -->
     <style>
       body {
+        margin: 0;
         background: #0a0a0f;
+        color: #ffffff;
+        font-family:
+          "Inter",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      /* Initial loading spinner (shown before JS loads) */
+      .preload-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .preload-spinner .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid rgba(139, 92, 246, 0.15);
+        border-top: 3px solid #8b5cf6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .preload-spinner p {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.25);
+        font-weight: 600;
+        letter-spacing: 0.05em;
       }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Preload spinner (visible until React hydrates) -->
+    <div id="root" role="application" aria-label="Horizon Life Tracker">
+      <div class="preload-spinner" aria-busy="true">
+        <div class="spinner" role="status" aria-label="Loading"></div>
+        <p>Loading Horizon...</p>
+      </div>
+    </div>
+
+    <!-- Fallback for no-JS -->
+    <noscript>
+      <div
+        style="
+          text-align: center;
+          padding: 60px 20px;
+          color: #fff;
+          font-family: Inter, sans-serif;
+        "
+      >
+        <h1>Horizon</h1>
+        <p>You need JavaScript enabled to run this app.</p>
+      </div>
+    </noscript>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

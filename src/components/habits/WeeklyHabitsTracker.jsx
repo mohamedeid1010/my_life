@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { getLocalDateString } from '../../hooks/useHabitsData';
+import { getLocalDateString } from '../../stores/useHabitStore';
 
 const DAY_LABELS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 

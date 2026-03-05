@@ -93,6 +93,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed';
       set({ error: message, loading: false });
+      throw err; // Re-throw so calling components can handle it
     }
   },
 
@@ -104,6 +105,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign up failed';
       set({ error: message, loading: false });
+      throw err; // Re-throw so calling components can handle it
     }
   },
 
@@ -116,6 +118,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google login failed';
       set({ error: message, loading: false });
+      throw err; // Re-throw so calling components can handle it
     }
   },
 

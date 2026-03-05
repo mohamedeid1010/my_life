@@ -65,7 +65,8 @@ interface SyncStore extends SyncState {
 function loadPersistedQueue(): PendingAction[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }

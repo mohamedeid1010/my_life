@@ -1,11 +1,14 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import useGymData from '../hooks/useGymData';
 import useHabitsData from '../hooks/useHabitsData';
 import useExportCSV from '../hooks/useExportCSV';
 import { Activity, Target, Dumbbell, Settings, Loader2, Cloud, CloudOff } from 'lucide-react';
 import { t } from '../config/translations';
 import usePreferences from '../hooks/usePreferences';
+import { useSyncStore } from '../stores/useSyncStore';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // ── Lazy-loaded page components (code splitting for faster initial load) ──
 const GymTracker = lazy(() => import('./GymTracker'));
@@ -49,7 +52,65 @@ function PageLoader() {
 }
 
 export default function App() {
-  const { user, loading: authLoading, logout } = useAuth();
+  /**
+   * Auth state from the Zustand store.
+   * `user` is null when not authenticated.
+   * `loading` is true while Firebase checks the initial auth state.
+   */
+  const user = useAuthStore((s) => s.user);
+  const authLoading = useAuthStore((s) => s.loading);
+  const logout = useAuthStore((s) => s.logout);
+
+  /**
+   * Initialize the Firebase Auth state listener ONCE on mount.
+   * This replaces the old AuthProvider's useEffect.
+   * The listener fires immediately with the current auth state,
+   * then again on every login/logout event.
+   */
+  useEffect(() => {
+    const unsubscribe = useAuthStore.getState().initAuthListener();
+    return unsubscribe;
+  }, []);
+
+  /**
+   * Initialize Offline Sync Engine.
+   * - Listens to window 'online' / 'offline' events
+   * - Flushes the pending actions queue when online
+   */
+  const isOnline = useSyncStore((s) => s.isOnline);
+  const pendingCount = useSyncStore((s) => s.pendingActions.length);
+
+  useEffect(() => {
+    const unsubOnline = useSyncStore.getState().initOnlineListener();
+    return unsubOnline;
+  }, []);
+
+  useEffect(() => {
+    if (isOnline && pendingCount > 0) {
+      useSyncStore.getState().flushQueue(async (action) => {
+        const payloadObj = action.payload;
+        if (!payloadObj || !payloadObj.path) return;
+
+        const docRef = doc(db, payloadObj.path);
+
+        // Deletions vs Sets
+        if (action.type.includes('DELETE') || action.type === 'HABIT_UPDATE' && payloadObj.data?.isHidden) {
+          // Note: HABIT_UPDATE for delete actually sets { isHidden: true }. 
+          // So it's technically a setDoc merge, handled in the else block normally.
+          // Real deletions:
+          if (action.type.includes('DELETE')) {
+            await deleteDoc(docRef);
+            return;
+          }
+        }
+        
+        // Default Set/Merge
+        if (payloadObj.data) {
+          await setDoc(docRef, payloadObj.data, { merge: true });
+        }
+      });
+    }
+  }, [isOnline, pendingCount]);
 
   if (authLoading) {
     return (
@@ -213,10 +274,10 @@ function Dashboard({ user, logout }) {
               style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
               onClick={() => setShowSettings(true)}
             >
-              {profile.photoURL ? (
+              {profile?.photoURL ? (
                 <img src={profile.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
-                (profile.name || user.displayName || user.email || '?')[0].toUpperCase()
+                (profile?.name || user?.displayName || user?.email || '?')[0].toUpperCase()
               )}
             </div>
 

@@ -1,13 +1,13 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useAuth } from './AuthContext';
+import { useAuthStore } from '../stores/useAuthStore';
 import { DEFAULT_LAYOUTS } from '../config/layoutConfig';
 
 export const PreferencesContext = createContext({});
 
 export function PreferencesProvider({ children }) {
-  const { user } = useAuth();
+  const user = useAuthStore((s) => s.user);
   
   const [profile, setProfile] = useState({ name: '', photoURL: '' });
   const [theme, setTheme] = useState('dark');
@@ -24,24 +24,39 @@ export function PreferencesProvider({ children }) {
     let isMounted = true;
     const loadPrefs = async () => {
       try {
+        if (!db) {
+          console.warn('Firestore (db) not initialized. Skipping preference load.');
+          setLoading(false);
+          return;
+        }
+
         const docRef = doc(db, 'users', user.uid, 'preferences', 'main');
-        const d = await getDoc(docRef);
-        if (d.exists() && isMounted) {
+        
+        // Try getting from cache first or handling the offline error gracefully
+        let d;
+        try {
+          d = await getDoc(docRef);
+        } catch (fetchErr) {
+          if (fetchErr.code === 'unavailable' || fetchErr.message?.includes('offline')) {
+            console.warn('Firebase is offline. Using local defaults/cache if available.');
+            // Firestore might handle this automatically with persistence, but we catch to prevent crash
+            setLoading(false);
+            return;
+          }
+          throw fetchErr;
+        }
+
+        if (d && d.exists() && isMounted) {
           const data = d.data();
           if (data.profile) setProfile(data.profile);
           if (data.theme) setTheme(data.theme);
           if (data.language) setLanguage(data.language);
           if (data.layouts) {
-            // Merge loaded layouts with defaults to ensure new widgets appear
             const mergedLayouts = { ...DEFAULT_LAYOUTS };
-            
-            // For each page, take the saved layout, but append any newly added widgets to the end.
             Object.keys(DEFAULT_LAYOUTS).forEach(page => {
-              if (data.layouts[page]) {
+              if (data.layouts[page] && Array.isArray(data.layouts[page])) {
                 const savedIds = data.layouts[page].map(w => w.id);
-                // Keep the saved ones in order
                 const pageLayout = [...data.layouts[page]];
-                // Add any missing ones defaults
                 DEFAULT_LAYOUTS[page].forEach(defW => {
                   if (!savedIds.includes(defW.id)) {
                     pageLayout.push(defW);

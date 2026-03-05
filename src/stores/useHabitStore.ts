@@ -3,25 +3,20 @@
  *  useHabitStore — Zustand store for Habit Management
  * ═══════════════════════════════════════════════════════════
  *
- *  Replaces: useHabitsData.js hook
- *
  *  Responsibilities:
- *  - CRUD operations for habits
- *  - Daily habit entry logging (completed / missed / skipped)
- *  - Grace day tracking
- *  - Streak computation (current + longest)
- *  - Mastery phase calculation (Initiation → Integration → Mastery)
- *  - Firestore persistence with debounced auto-save
+ *  - CRUD operations for habits (Firestore subcollection: users/{uid}/habits/{habitId})
+ *  - Daily habit entry logging (Firestore subcollection: users/{uid}/habits/{habitId}/logs/{date})
+ *  - Grace day tracking & Streak computation
+ *  - Mastery phase calculation
+ *  - Real-time Firestore sync via onSnapshot
  *  - Offline action queuing via useSyncStore
- *
- *  Architecture Note:
- *  Pure stat computation functions are defined at module level
- *  (not inside the store) so they can be unit-tested independently.
- *  The store only holds raw data + exposes derived selectors.
  */
 
 import { create } from 'zustand';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { 
+  collection, doc, setDoc, getDocs, deleteDoc, 
+  onSnapshot, query, where, writeBatch, serverTimestamp 
+} from 'firebase/firestore';
 import { db } from '../firebase';
 import { useSyncStore } from './useSyncStore';
 import type {
@@ -37,10 +32,6 @@ import type { GlobalHabitsAnalytics, WeakestHabitAnalysis } from '../types/analy
  *  PURE HELPER FUNCTIONS (testable, no side effects)
  * ════════════════════════════════════════════════════════ */
 
-/**
- * Returns the local date as YYYY-MM-DD string.
- * This avoids timezone issues with Date.toISOString().
- */
 export function getLocalDateString(date: Date = new Date()): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -48,18 +39,6 @@ export function getLocalDateString(date: Date = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Computes all stats for a SINGLE habit.
- *
- * This is a pure function — given a HabitRaw, it returns HabitStats.
- * It handles:
- *  - Total completed / missed counts
- *  - Grace days balance for the current month
- *  - Current streak (skipped days don't break streak)
- *  - Longest streak
- *  - Mastery phase (Initiation < 21d, Integration 21–66d, Mastery ≥ 66d)
- *  - Yearly adherence rate
- */
 function computeHabitStats(habit: HabitRaw): HabitStats {
   const todayStr = getLocalDateString();
   const todayObj = new Date(todayStr);
@@ -75,7 +54,6 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
   const currentMonth = todayObj.getMonth();
   const currentYear = todayObj.getFullYear();
 
-  // ── Pass 1: Count totals ──
   allDates.forEach((dateStr) => {
     const entry = history[dateStr];
     const dateObj = new Date(dateStr);
@@ -97,7 +75,6 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
     (habit.graceDaysAllowance || 0) - graceDaysUsedThisMonth
   );
 
-  // ── Days Since Start ──
   let startDateObj = todayObj;
   if (habit.startDate) {
     startDateObj = new Date(habit.startDate);
@@ -113,18 +90,14 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
         ) + 1
       : 0;
 
-  // ── Success Rate ──
   const successRate =
     daysPassedSinceStart > 0
       ? Math.round((totalCompleted / daysPassedSinceStart) * 100)
       : 0;
 
-  // ── Current Streak ──
-  // Skipped (grace) days do NOT break the streak, but also don't add to it
   let currentStreak = 0;
   const isActiveDay = new Date(todayObj);
 
-  // If today is not logged, start checking from yesterday
   if (!history[todayStr] || history[todayStr].status === 'pending') {
     isActiveDay.setDate(isActiveDay.getDate() - 1);
   }
@@ -137,14 +110,12 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
       currentStreak++;
       isActiveDay.setDate(isActiveDay.getDate() - 1);
     } else if (entry?.status === 'skipped') {
-      // Grace day — streak not broken, continue looking backward
       isActiveDay.setDate(isActiveDay.getDate() - 1);
     } else {
-      break; // Missed or untracked = streak broken
+      break;
     }
   }
 
-  // ── Longest Streak ──
   let longestStreak = 0;
   let tempStreak = 0;
 
@@ -160,7 +131,7 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
         tempStreak++;
         longestStreak = Math.max(longestStreak, tempStreak);
       } else if (entry?.status === 'skipped') {
-        // Grace day — doesn't add to streak, doesn't break it
+        // skipped
       } else if (entry?.status === 'missed' || runStr !== todayStr) {
         tempStreak = 0;
       }
@@ -168,7 +139,6 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
     }
   }
 
-  // ── Mastery Phase (21-day → 66-day neuroscience model) ──
   let masteryPhase: HabitMastery['phase'] = 'Initiation';
   let masteryProgress = 0;
   let nextThreshold = 21;
@@ -186,7 +156,6 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
     nextThreshold = 21;
   }
 
-  // ── Yearly Adherence ──
   let totalCompletedThisYear = 0;
   allDates.forEach((dateStr) => {
     const entry = history[dateStr];
@@ -230,10 +199,6 @@ function computeHabitStats(habit: HabitRaw): HabitStats {
   };
 }
 
-/**
- * Computes global analytics across all active habits.
- * Used by the HabitsAnalyticsDashboard component.
- */
 function computeGlobalAnalytics(
   activeHabits: HabitWithStats[]
 ): GlobalHabitsAnalytics | null {
@@ -301,7 +266,6 @@ function computeGlobalAnalytics(
     prevMonthExpected += hPrevExpected;
     prevMonthCompleted += hPrevCompleted;
 
-    // Calculate habit score (streak × 2 + success rate)
     const score = h.stats.currentStreak * 2 + h.stats.successRate;
 
     if (score > maxScore) {
@@ -309,7 +273,6 @@ function computeGlobalAnalytics(
       strongest = h;
     }
 
-    // Only count as weakest if they have enough data
     if (score < minScore && Object.keys(history).length > 2) {
       minScore = score;
 
@@ -334,7 +297,6 @@ function computeGlobalAnalytics(
     }
   });
 
-  // Fallbacks
   if (!weakest && activeHabits.length > 0) {
     const min = activeHabits.reduce((a, b) =>
       a.stats.successRate < b.stats.successRate ? a : b
@@ -355,7 +317,6 @@ function computeGlobalAnalytics(
       : 0;
   const momDelta = currConsistency - prevConsistency;
 
-  // ── 30-day sparkline data ──
   const monthDates: number[] = [];
   const _today = new Date();
   _today.setHours(0, 0, 0, 0);
@@ -398,59 +359,36 @@ interface HabitStore {
   habits: HabitRaw[];
   loaded: boolean;
   saving: boolean;
+  unsubscribeFn: (() => void) | null;
 
-  // ── Derived (Computed) Selectors ──
-  /** All habits with stats computed */
+  // ── Derived Selectors ──
   getHabitsWithStats: () => HabitWithStats[];
-
-  /** Only non-hidden habits */
   getActiveHabits: () => HabitWithStats[];
-
-  /** Global analytics across all active habits */
   getAnalytics: () => GlobalHabitsAnalytics | null;
 
   // ── Firebase I/O ──
-  /** Load habits from Firestore for the given user ID */
-  loadHabits: (uid: string) => Promise<void>;
-
-  /** Save habits to Firestore (debounced internally) */
-  saveHabits: (uid: string) => void;
+  /** Initializes real-time listener for user's habits & logs */
+  initSync: (uid: string) => void;
+  /** Cleans up listener */
+  cleanup: () => void;
 
   // ── Mutations ──
-  /** Add a new habit */
-  addHabit: (newHabit: Omit<HabitRaw, 'id' | 'history'>) => void;
-
-  /** Update an existing habit's properties */
-  updateHabit: (id: string, updates: Partial<HabitRaw>) => void;
-
-  /** Soft-delete a habit (or hard-delete) */
-  deleteHabit: (id: string) => void;
-
-  /**
-   * Log an entry for a specific habit on a specific date.
-   * This is the primary action for daily habit tracking.
-   *
-   * @param habitId — Which habit
-   * @param dateStr — YYYY-MM-DD
-   * @param entryData — The entry data (status, value, note)
-   */
+  addHabit: (uid: string, newHabit: Omit<HabitRaw, 'id' | 'history'>) => Promise<void>;
+  updateHabit: (uid: string, id: string, updates: Partial<HabitRaw>) => Promise<void>;
+  deleteHabit: (uid: string, id: string) => Promise<void>;
   logHabitEntry: (
+    uid: string,
     habitId: string,
     dateStr: string,
     entryData: Partial<HabitEntry>
-  ) => void;
+  ) => Promise<void>;
 }
 
-/** Debounce timer reference for auto-save */
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
-
 export const useHabitStore = create<HabitStore>((set, get) => ({
-  // ── Initial State ──
   habits: [],
   loaded: false,
   saving: false,
-
-  // ── Derived Selectors ──
+  unsubscribeFn: null,
 
   getHabitsWithStats: (): HabitWithStats[] => {
     const { habits } = get();
@@ -471,130 +409,148 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     return computeGlobalAnalytics(activeHabits);
   },
 
-  // ── Firebase I/O ──
+  initSync: (uid: string) => {
+    const { unsubscribeFn } = get();
+    if (unsubscribeFn) {
+      unsubscribeFn(); // Clean up existing listener
+    }
 
-  loadHabits: async (uid: string) => {
-    try {
-      const docRef = doc(db, 'users', uid);
-      const docSnap = await getDoc(docRef);
+    set({ loaded: false });
 
-      if (docSnap.exists()) {
-        const saved = docSnap.data();
+    const habitsRef = collection(db, `users/${uid}/habits`);
+    const q = query(habitsRef); // Could add where("isHidden", "==", false) here if we never need to show hidden habits
 
-        if (saved.smartHabits && Array.isArray(saved.smartHabits)) {
-          set({ habits: saved.smartHabits as HabitRaw[], loaded: true });
-        } else if (
-          saved.habitsData &&
-          typeof saved.habitsData === 'object'
-        ) {
-          // ── Migration from v1 single-habit model ──
-          const migratedHabit: HabitRaw = {
-            id: 'legacy-1',
-            name: 'Daily Momentum',
-            icon: '🔥',
-            category: 'productivity',
-            type: 'daily',
-            targetType: 'boolean',
-            graceDaysAllowance: 0,
-            history: Object.keys(
-              saved.habitsData as Record<string, string>
-            ).reduce(
-              (acc, date) => {
-                acc[date] = {
-                  status: (saved.habitsData as Record<string, string>)[date] as HabitEntry['status'],
-                };
-                return acc;
-              },
-              {} as Record<string, HabitEntry>
-            ),
-          };
-          set({ habits: [migratedHabit], loaded: true });
-        } else {
-          set({ loaded: true });
-        }
-      } else {
-        set({ loaded: true });
-      }
-    } catch (err) {
-      console.error('[HabitStore] Error loading habits:', err);
+    // Attach real-time listener to habits
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const habitsData: HabitRaw[] = [];
+
+      // For each habit, we also need to fetch its logs
+      // Since logs are in a subcollection, we read them when the habit updates
+      // Note: A more scalable approach for thousands of logs is to only read logs for the current visible timeframe,
+      // but for now we fetch all logs to compute absolute streaks.
+      const promises = snapshot.docs.map(async (habitDoc) => {
+        const habit = habitDoc.data() as HabitRaw;
+        habit.id = habitDoc.id;
+        
+        // Fetch logs subcollection 
+        const logsRef = collection(db, `users/${uid}/habits/${habitDoc.id}/logs`);
+        const logsSnapshot = await getDocs(logsRef);
+        
+        const history: Record<string, HabitEntry> = {};
+        logsSnapshot.forEach(logDoc => {
+          history[logDoc.id] = logDoc.data() as HabitEntry;
+        });
+        
+        habit.history = history;
+        habitsData.push(habit);
+      });
+
+      await Promise.all(promises);
+      
+      set({ habits: habitsData, loaded: true });
+    }, (error) => {
+      console.error("[HabitStore] Real-time sync error:", error);
       set({ loaded: true });
+    });
+
+    set({ unsubscribeFn: unsubscribe });
+  },
+
+  cleanup: () => {
+    const { unsubscribeFn } = get();
+    if (unsubscribeFn) {
+      unsubscribeFn();
+      set({ unsubscribeFn: null, habits: [], loaded: false });
     }
   },
 
-  saveHabits: (uid: string) => {
-    // Debounced auto-save (1 second)
-    if (saveTimeout) clearTimeout(saveTimeout);
-
-    set({ saving: true });
-
-    saveTimeout = setTimeout(async () => {
-      try {
-        const { habits } = get();
-        const { isOnline } = useSyncStore.getState();
-
-        if (isOnline) {
-          // Online: save directly to Firestore
-          const docRef = doc(db, 'users', uid);
-          await setDoc(
-            docRef,
-            {
-              smartHabits: habits,
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true }
-          );
-        } else {
-          // Offline: queue the entire habits array as a sync action
-          useSyncStore.getState().enqueueAction('HABIT_UPDATE', {
-            smartHabits: habits,
-          });
-        }
-      } catch (err) {
-        console.error('[HabitStore] Error saving habits:', err);
-      } finally {
-        set({ saving: false });
-      }
-    }, 1000);
-  },
-
-  // ── Mutations ──
-
-  addHabit: (newHabit) => {
+  addHabit: async (uid: string, newHabit) => {
+    const { isOnline } = useSyncStore.getState();
+    const habitId = Date.now().toString(); // Use timestamp as ID locally
+    
+    // Optistic update
     const habit: HabitRaw = {
-      id: Date.now().toString(),
+      id: habitId,
       history: {},
       ...newHabit,
     };
-
     set((state) => ({ habits: [...state.habits, habit] }));
+
+    const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
+    const payload = { ...newHabit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+
+    if (isOnline) {
+      try {
+        await setDoc(habitRef, payload);
+      } catch (err) {
+        console.error("Failed to add habit", err);
+      }
+    } else {
+      useSyncStore.getState().enqueueAction('HABIT_ADD', { path: `users/${uid}/habits/${habitId}`, data: payload });
+    }
   },
 
-  updateHabit: (id: string, updates: Partial<HabitRaw>) => {
+  updateHabit: async (uid: string, id: string, updates: Partial<HabitRaw>) => {
+    const { isOnline } = useSyncStore.getState();
+    
+    // Optistic update
     set((state) => ({
       habits: state.habits.map((h) =>
         h.id === id ? { ...h, ...updates } : h
       ),
     }));
+
+    const habitRef = doc(db, `users/${uid}/habits/${id}`);
+    const payload = { ...updates, updatedAt: serverTimestamp() };
+
+    if (isOnline) {
+      try {
+        await setDoc(habitRef, payload, { merge: true });
+      } catch (err) {
+        console.error("Failed to update habit", err);
+      }
+    } else {
+       useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${id}`, data: payload });
+    }
   },
 
-  deleteHabit: (id: string) => {
+  deleteHabit: async (uid: string, id: string) => {
+    const { isOnline } = useSyncStore.getState();
+    
+    // Optistic update
     set((state) => ({
       habits: state.habits.filter((h) => h.id !== id),
     }));
+
+    const habitRef = doc(db, `users/${uid}/habits/${id}`);
+
+    if (isOnline) {
+      try {
+        await deleteDoc(habitRef);
+      } catch (err) {
+        console.error("Failed to delete habit", err);
+      }
+    } else {
+      // NOTE: useSyncStore would need a DELETE action type, 
+      // but for now we fallback to marking as hidden if offline
+      useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${id}`, data: { isHidden: true } });
+    }
   },
 
-  logHabitEntry: (
+  logHabitEntry: async (
+    uid: string,
     habitId: string,
     dateStr: string,
     entryData: Partial<HabitEntry>
   ) => {
+    const { isOnline } = useSyncStore.getState();
+
+    // Optistic update
     set((state) => ({
       habits: state.habits.map((h) => {
         if (h.id !== habitId) return h;
-
         const prevHistory = h.history || {};
         const currentEntry = prevHistory[dateStr] || {};
-
         return {
           ...h,
           history: {
@@ -604,5 +560,18 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
         };
       }),
     }));
+
+    const logRef = doc(db, `users/${uid}/habits/${habitId}/logs/${dateStr}`);
+    const payload = { ...entryData, loggedAt: serverTimestamp() };
+
+    if (isOnline) {
+      try {
+        await setDoc(logRef, payload, { merge: true });
+      } catch (err) {
+        console.error("Failed to log entry", err);
+      }
+    } else {
+      useSyncStore.getState().enqueueAction('HABIT_LOG_ENTRY', { path: `users/${uid}/habits/${habitId}/logs/${dateStr}`, data: payload });
+    }
   },
 }));

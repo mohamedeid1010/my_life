@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { getLocalDateString } from '../../hooks/useHabitsData';
+import { getLocalDateString } from '../../stores/useHabitStore';
 
 function getMonthRate(habit, year, month, startDateObj, today) {
   const isStartMonth = year === startDateObj.getFullYear() && month === startDateObj.getMonth();

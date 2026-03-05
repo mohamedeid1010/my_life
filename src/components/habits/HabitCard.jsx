@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getLocalDateString } from '../../hooks/useHabitsData';
+import { getLocalDateString } from '../../stores/useHabitStore';
 import { Check, Flame, Star, Battery, Smile, Activity } from 'lucide-react';
 
 export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {

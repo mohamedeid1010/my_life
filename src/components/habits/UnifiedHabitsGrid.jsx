@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
-import { getLocalDateString } from '../../hooks/useHabitsData';
+import { getLocalDateString } from '../../stores/useHabitStore';
+import { Plus, Check, Clock, Edit2 } from 'lucide-react';
 
 export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
   const scrollRef = useRef(null);

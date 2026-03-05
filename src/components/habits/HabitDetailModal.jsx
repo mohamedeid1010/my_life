@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { X, Flame, Star, Coffee, Brain, Edit2, Check, Sparkles } from 'lucide-react';
-import { getLocalDateString } from '../../hooks/useHabitsData';
+import { getLocalDateString } from '../../stores/useHabitStore';
 
 const ICONS = ['💧', '📚', '🏃‍♂️', '🧘‍♀️', '🍎', '✍️', ' 기도', '🛌', '💪', '💻'];
 

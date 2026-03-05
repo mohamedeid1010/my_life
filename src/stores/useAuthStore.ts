@@ -41,6 +41,9 @@ interface AuthStore {
   /** Last auth error message */
   error: string | null;
 
+  /** Timestamp of last verified user activity */
+  lastActiveAt: number | null;
+
   /** Sign in with email + password */
   loginWithEmail: (email: string, password: string) => Promise<void>;
 
@@ -109,6 +112,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       loading: false,
       error: null,
+      lastActiveAt: null,
 
       // ── Actions ──
 
@@ -117,7 +121,11 @@ export const useAuthStore = create<AuthStore>()(
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const role = await fetchUserRole(credential.user.uid);
-      set({ user: serializeUser(credential.user, role), loading: false });
+      set({ 
+        user: serializeUser(credential.user, role), 
+        lastActiveAt: Date.now(),
+        loading: false 
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed';
       set({ error: message, loading: false });
@@ -129,8 +137,11 @@ export const useAuthStore = create<AuthStore>()(
     set({ loading: true, error: null });
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      // Wait to create user defaults before setting state completely if needed, or default 'user'
-      set({ user: serializeUser(credential.user, 'user'), loading: false });
+      set({ 
+        user: serializeUser(credential.user, 'user'), 
+        lastActiveAt: Date.now(),
+        loading: false 
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign up failed';
       set({ error: message, loading: false });
@@ -144,7 +155,11 @@ export const useAuthStore = create<AuthStore>()(
       const provider = new GoogleAuthProvider();
       const credential = await signInWithPopup(auth, provider);
       const role = await fetchUserRole(credential.user.uid);
-      set({ user: serializeUser(credential.user, role), loading: false });
+      set({ 
+        user: serializeUser(credential.user, role), 
+        lastActiveAt: Date.now(),
+        loading: false 
+      });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google login failed';
       set({ error: message, loading: false });
@@ -173,6 +188,17 @@ export const useAuthStore = create<AuthStore>()(
       console.error('[AuthStore] Failed to set auth persistence:', err);
     });
 
+    // ── 7-Day Inactivity Check on Boot ──
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const { lastActiveAt } = useAuthStore.getState();
+    
+    if (lastActiveAt && (Date.now() - lastActiveAt > SEVEN_DAYS_MS)) {
+      console.warn('[AuthStore] Session expired due to 7 days of inactivity.');
+      signOut(auth).catch(console.error);
+      set({ user: null, lastActiveAt: null, error: 'Session expired. Please log in again.' });
+      // We don't return early because we still want to set up the listener
+    }
+
     /**
      * Subscribe to Firebase auth state changes.
      * This fires immediately with the initial state and then
@@ -181,9 +207,13 @@ export const useAuthStore = create<AuthStore>()(
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         const role = await fetchUserRole(fbUser.uid);
-        set({ user: serializeUser(fbUser, role), loading: false });
+        set({ 
+          user: serializeUser(fbUser, role), 
+          lastActiveAt: Date.now(), // Refresh timestamp on successful background verify
+          loading: false 
+        });
       } else {
-        set({ user: null, loading: false });
+        set({ user: null, lastActiveAt: null, loading: false });
       }
     });
 
@@ -192,5 +222,8 @@ export const useAuthStore = create<AuthStore>()(
 }),
 {
   name: 'herizon-auth-cache', // unique name for localStorage
-  partialize: (state) => ({ user: state.user }), // only persist the user object, not loading/error
+  partialize: (state) => ({ 
+    user: state.user,
+    lastActiveAt: state.lastActiveAt
+  }), // persist user and timestamp
 }));

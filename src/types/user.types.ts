@@ -4,14 +4,16 @@
  * ═══════════════════════════════════════════════════
  */
 
+import type { UserRole } from './features';
+
 /** Firebase Auth user (subset we rely on) */
 export interface FirebaseAuthUser {
   readonly uid: string;
   readonly email: string | null;
   readonly displayName: string | null;
   readonly photoURL: string | null;
+  readonly role: UserRole;
 }
-
 /** User profile stored in Firestore: users/{uid}/preferences/main */
 export interface UserProfile {
   /** Display name (overrides Firebase displayName) */

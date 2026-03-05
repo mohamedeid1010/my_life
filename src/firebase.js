@@ -47,22 +47,27 @@ export const auth = getAuth(app);
  */
 const db = (() => {
   try {
-    // Try to get instance first (prevents "already initialized" errors in HMR)
-    const existingDb = getFirestore(app);
-    return existingDb;
-  } catch {
-    // If not initialized, do it now with cache settings
-    try {
-      return initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
-        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-      });
-    } catch (err) {
-      console.error('Firestore initialization with cache failed, falling back to default:', err);
-      return initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true
-      });
+    // Attempt to initialize with offline persistence immediately.
+    // This provides bulletproof caching across browser reloads.
+    return initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true,
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
+  } catch (err) {
+    // If it throws an error containing 'already-initialized' (typical in Vite HMR),
+    // we safely fallback to retrieving the existing instance.
+    if (err.message?.includes('already-initialized') || err.code === 'failed-precondition') {
+      try {
+        return getFirestore(app);
+      } catch (innerErr) {
+        console.warn('Fallback getFirestore failed:', innerErr);
+      }
     }
+    
+    console.error('Firestore initialization with cache failed, falling back to default:', err);
+    return initializeFirestore(app, {
+      experimentalAutoDetectLongPolling: true
+    });
   }
 })();
 

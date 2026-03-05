@@ -19,10 +19,14 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
   type User,
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import type { FirebaseAuthUser } from '../types/user.types';
+import type { UserRole } from '../types/features';
 
 /* ─────────────── Store Interface ─────────────── */
 
@@ -66,13 +70,32 @@ interface AuthStore {
  * This prevents storing the entire Firebase User object (which is mutable
  * and contains methods) in our Zustand state.
  */
-function serializeUser(fbUser: User): FirebaseAuthUser {
+function serializeUser(fbUser: User, role: UserRole): FirebaseAuthUser {
   return {
     uid: fbUser.uid,
     email: fbUser.email,
     displayName: fbUser.displayName,
     photoURL: fbUser.photoURL,
+    role,
   };
+}
+
+/**
+ * Helper to fetch a user's role from their Firestore profile document.
+ */
+async function fetchUserRole(uid: string): Promise<UserRole> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      if (data.role === 'admin' || data.role === 'tester') {
+        return data.role as UserRole;
+      }
+    }
+  } catch (err) {
+    console.error('[AuthStore] Failed to fetch user role:', err);
+  }
+  return 'user';
 }
 
 /* ─────────────── Store Definition ─────────────── */
@@ -89,7 +112,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ loading: true, error: null });
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
-      set({ user: serializeUser(credential.user), loading: false });
+      const role = await fetchUserRole(credential.user.uid);
+      set({ user: serializeUser(credential.user, role), loading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Login failed';
       set({ error: message, loading: false });
@@ -101,7 +125,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ loading: true, error: null });
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
-      set({ user: serializeUser(credential.user), loading: false });
+      // Wait to create user defaults before setting state completely if needed, or default 'user'
+      set({ user: serializeUser(credential.user, 'user'), loading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Sign up failed';
       set({ error: message, loading: false });
@@ -114,7 +139,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
     try {
       const provider = new GoogleAuthProvider();
       const credential = await signInWithPopup(auth, provider);
-      set({ user: serializeUser(credential.user), loading: false });
+      const role = await fetchUserRole(credential.user.uid);
+      set({ user: serializeUser(credential.user, role), loading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google login failed';
       set({ error: message, loading: false });
@@ -136,13 +162,22 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   initAuthListener: () => {
     /**
+     * Enforce local persistence first: this guarantees the login session
+     * survives page refreshes and browser restarts.
+     */
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.error('[AuthStore] Failed to set auth persistence:', err);
+    });
+
+    /**
      * Subscribe to Firebase auth state changes.
      * This fires immediately with the initial state and then
      * on every subsequent login/logout.
      */
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        set({ user: serializeUser(fbUser), loading: false });
+        const role = await fetchUserRole(fbUser.uid);
+        set({ user: serializeUser(fbUser, role), loading: false });
       } else {
         set({ user: null, loading: false });
       }

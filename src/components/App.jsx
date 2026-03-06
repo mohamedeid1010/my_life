@@ -20,8 +20,8 @@ const SettingsModal = lazy(() => import('./SettingsModal'));
 // ── All available nav pages (add future pages here) ──
 const ALL_NAV_PAGES = [
   { id: 'overview', labelKey: 'nav_overview', icon: 'Activity' },
-  { id: 'gym', labelKey: 'nav_gym', icon: 'Dumbbell' },
   { id: 'habits', labelKey: 'nav_habits', icon: 'Target' },
+  { id: 'gym', labelKey: 'nav_gym', icon: 'Dumbbell' },
 ];
 
 const ICON_MAP = { Activity, Dumbbell, Target };

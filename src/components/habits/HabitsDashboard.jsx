@@ -1,8 +1,5 @@
 import React from 'react';
 import HabitCard from './HabitCard';
-import UnifiedHabitsGrid from './UnifiedHabitsGrid';
-import MonthlyHabitsTable from './MonthlyHabitsTable';
-import WeeklyHabitsTracker from './WeeklyHabitsTracker';
 import { Plus } from 'lucide-react';
 
 export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, onOpenCreateModal }) {
@@ -69,9 +66,6 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
         </div>
       </div>
 
-      {/* Unified Heatmap Grid */}
-      <UnifiedHabitsGrid habits={habits} onLogEntry={onLogEntry} />
-
       {/* Habit List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {habits.length === 0 ? (
@@ -93,12 +87,6 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
           ))
         )}
       </div>
-
-      {/* Weekly Tracker */}
-      <WeeklyHabitsTracker habits={habits} onLogEntry={onLogEntry} />
-
-      {/* Monthly Adherence — Full History at Bottom */}
-      <MonthlyHabitsTable habits={habits} />
     </div>
   );
 }

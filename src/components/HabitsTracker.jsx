@@ -7,17 +7,36 @@ import HabitsDashboard from "./habits/HabitsDashboard";
 import CreateHabitForm from "./habits/CreateHabitForm";
 import HabitDetailModal from "./habits/HabitDetailModal";
 import HabitsAnalyticsDashboard from "./habits/HabitsAnalyticsDashboard";
+import WeeklyHabitsTracker from "./habits/WeeklyHabitsTracker";
+import UnifiedHabitsGrid from "./habits/UnifiedHabitsGrid";
+import MonthlyHabitsTable from "./habits/MonthlyHabitsTable";
 
 const SECTIONS = [
   { key: 'dashboard', labelEn: 'Habits Dashboard', labelAr: 'لوحة العادات', locked: true },
+  { key: 'weekly_view', labelEn: "This Week's Tracker", labelAr: 'متتبع الأسبوع' },
+  { key: 'unified_grid', labelEn: 'Monthly Overview', labelAr: 'نظرة عامة شهرية' },
+  { key: 'monthly_view', labelEn: 'Full History', labelAr: 'السجل الكامل' },
   { key: 'analytics', labelEn: 'Analytics', labelAr: 'التحليلات' },
 ];
 
 function loadVisibility() {
   try {
     const saved = localStorage.getItem('habits_sections');
-    return saved ? JSON.parse(saved) : { dashboard: true, analytics: true };
-  } catch { return { dashboard: true, analytics: true }; }
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Migration: Ensure new sections are visible by default
+      return {
+        dashboard: true,
+        weekly_view: false,
+        unified_grid: false,
+        monthly_view: false,
+        analytics: false,
+        ...parsed,
+      };
+    }
+  } catch { /* ignore */ }
+  // Only show the main dashboard by default for a simpler experience
+  return { dashboard: true, weekly_view: false, unified_grid: false, monthly_view: false, analytics: false };
 }
 
 export default function HabitsTracker({ habitsData }) {
@@ -35,8 +54,14 @@ export default function HabitsTracker({ habitsData }) {
   const [sectionOrder, setSectionOrder] = useState(() => {
     try {
       const saved = localStorage.getItem('habits_order');
-      return saved ? JSON.parse(saved) : ['dashboard', 'analytics'];
-    } catch { return ['dashboard', 'analytics']; }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Migration: Ensure all keys are present
+        const missing = SECTIONS.filter(s => !parsed.includes(s.key)).map(s => s.key);
+        return [...parsed, ...missing];
+      }
+    } catch { /* ignore */ }
+    return SECTIONS.map(s => s.key);
   });
 
   const v = visibility;
@@ -78,6 +103,12 @@ export default function HabitsTracker({ habitsData }) {
             onOpenCreateModal={() => setIsCreateModalOpen(true)}
           />
         );
+      case 'weekly_view':
+        return <WeeklyHabitsTracker habits={activeHabits} onLogEntry={logHabitEntry} />;
+      case 'unified_grid':
+        return <UnifiedHabitsGrid habits={activeHabits} onLogEntry={logHabitEntry} />;
+      case 'monthly_view':
+        return <MonthlyHabitsTable habits={activeHabits} />;
       case 'analytics':
         return <HabitsAnalyticsDashboard analytics={analytics} habits={activeHabits} />;
       default:
@@ -87,13 +118,12 @@ export default function HabitsTracker({ habitsData }) {
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in relative z-0">
-
       {/* Section Manager Toggle */}
       <div className="flex justify-end">
         <button
           type="button"
           onClick={() => setShowSectionManager(!showSectionManager)}
-          className="touch-target flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all min-h-[44px]"
+          className="touch-target flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all min-h-[44px]"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <Settings size={14} />
@@ -103,7 +133,7 @@ export default function HabitsTracker({ habitsData }) {
 
       {/* Section Manager Panel */}
       {showSectionManager && (
-        <div className="glass-card p-4 space-y-2 animate-fade-in">
+        <div className="glass-card p-4 space-y-2 animate-fade-in relative z-10">
           {sectionOrder.map((key, idx) => {
             const sec = SECTIONS.find(s => s.key === key);
             if (!sec) return null;
@@ -113,11 +143,16 @@ export default function HabitsTracker({ habitsData }) {
               }`}>
                 <span className={`flex-1 text-xs sm:text-sm font-bold min-w-0 truncate ${v[key] ? 'text-white/70' : 'text-white/30'}`}>
                   {isAr ? sec.labelAr : sec.labelEn}
+                  {sec.locked && <span className="ml-2 text-[10px] text-violet-400 opacity-60 uppercase font-black tracking-widest">{t('main_locked', L)}</span>}
                 </span>
-                {!sec.locked && (
+                {!sec.locked ? (
                   <button type="button" onClick={() => toggleSection(key)} className="touch-target p-2 rounded-lg hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
                     {v[key] ? <Eye size={14} className="text-emerald-400/60" /> : <EyeOff size={14} className="text-white/20" />}
                   </button>
+                ) : (
+                  <div className="p-2 opacity-30 cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center">
+                    <Eye size={14} className="text-emerald-400/60" />
+                  </div>
                 )}
                 <div className="flex flex-col gap-0.5">
                   <button type="button" onClick={() => moveSection(idx, -1)} disabled={idx === 0} className="touch-target p-2 rounded hover:bg-white/10 disabled:opacity-20 min-h-[36px] flex items-center justify-center">

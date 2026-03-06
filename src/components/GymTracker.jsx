@@ -29,7 +29,7 @@ const SECTIONS_KEYS = [
 
 function loadVisibility() {
   try {
-    const saved = localStorage.getItem('gym_section_visibility');
+    const saved = localStorage.getItem('gym_section_visibility_v2');
     if (saved) {
       const parsed = JSON.parse(saved);
       return { ...parsed, heatmap: true };
@@ -69,7 +69,7 @@ export default function GymTracker({
   const [showSettings, setShowSettings] = useState(false);
   const [sectionOrder, setSectionOrder] = useState(() => {
     try {
-      const saved = localStorage.getItem('gym_section_order');
+      const saved = localStorage.getItem('gym_section_order_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         // Ensure all keys are present (migration)
@@ -103,7 +103,7 @@ export default function GymTracker({
   const toggleSection = useCallback((key) => {
     setVisibility(prev => {
       const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem('gym_section_visibility', JSON.stringify(next));
+      localStorage.setItem('gym_section_visibility_v2', JSON.stringify(next));
       return next;
     });
   }, []);
@@ -114,8 +114,9 @@ export default function GymTracker({
     if (target < 0 || target >= arr.length) return;
     [arr[idx], arr[target]] = [arr[target], arr[idx]];
     setSectionOrder(arr);
-    localStorage.setItem('gym_section_order', JSON.stringify(arr));
+    localStorage.setItem('gym_section_order_v2', JSON.stringify(arr));
   };
+
 
   // Open modal when marking today — instead of just toggling
   const handleMarkToday = useCallback(() => {

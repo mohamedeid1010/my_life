@@ -21,7 +21,7 @@ const SECTIONS = [
 
 function loadVisibility() {
   try {
-    const saved = localStorage.getItem('habits_sections');
+    const saved = localStorage.getItem('habits_sections_v2');
     if (saved) {
       const parsed = JSON.parse(saved);
       // Migration: Ensure new sections are visible by default
@@ -53,7 +53,7 @@ export default function HabitsTracker({ habitsData }) {
   const [showSectionManager, setShowSectionManager] = useState(false);
   const [sectionOrder, setSectionOrder] = useState(() => {
     try {
-      const saved = localStorage.getItem('habits_order');
+      const saved = localStorage.getItem('habits_order_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         // Migration: Ensure all keys are present
@@ -70,7 +70,7 @@ export default function HabitsTracker({ habitsData }) {
     if (sec?.locked) return;
     const next = { ...v, [key]: !v[key] };
     setVisibility(next);
-    localStorage.setItem('habits_sections', JSON.stringify(next));
+    localStorage.setItem('habits_sections_v2', JSON.stringify(next));
   };
 
   const moveSection = (idx, dir) => {
@@ -79,7 +79,7 @@ export default function HabitsTracker({ habitsData }) {
     if (target < 0 || target >= arr.length) return;
     [arr[idx], arr[target]] = [arr[target], arr[idx]];
     setSectionOrder(arr);
-    localStorage.setItem('habits_order', JSON.stringify(arr));
+    localStorage.setItem('habits_order_v2', JSON.stringify(arr));
   };
 
   if (!loaded) {

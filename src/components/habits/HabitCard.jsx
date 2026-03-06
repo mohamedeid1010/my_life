@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
 import { Check, Flame, Star, Battery, Smile, Activity } from 'lucide-react';
+import usePreferences from '../../hooks/usePreferences';
+import { t } from '../../config/translations';
 
 export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
+  const { language } = usePreferences();
+  const L = language;
   const { id, name, icon, targetType, targetValue, unit, graceDaysAllowance, stats } = habit;
   const todayStr = getLocalDateString();
   const todayEntry = stats.todayEntry;
@@ -58,7 +62,7 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
             type="button"
             onClick={handleToggle}
             className={`touch-target w-12 h-12 rounded-xl flex items-center justify-center text-2xl sm:text-3xl transition-transform duration-300 hover:scale-110 active:scale-95 shrink-0 ${isCompleted ? 'scale-110 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-black/20 hover:bg-black/40'}`}
-            title={isCompleted ? "Mark as Pending" : "Mark as Completed"}
+            title={isCompleted ? t('habit_mark_pending', L) : t('habit_mark_completed', L)}
           >
             {icon}
           </button>
@@ -71,7 +75,7 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
             <div className="flex items-center gap-3 mt-1">
               {/* Current Streak */}
               {stats.currentStreak > 0 && (
-                <div className="flex items-center gap-1 text-xs font-bold text-orange-400" title="Current Streak">
+                <div className="flex items-center gap-1 text-xs font-bold text-orange-400" title={t('habit_current_streak', L)}>
                   <Flame size={12} />
                   <span>{stats.currentStreak}d</span>
                 </div>
@@ -95,9 +99,9 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
 
               {/* Grace Days Left */}
               {graceDaysAllowance > 0 && (
-                <div className="text-xs font-semibold text-white/30 flex items-center gap-1" title="Grace days left this month">
+                <div className="text-xs font-semibold text-white/30 flex items-center gap-1" title={t('habit_grace_days_left', L)}>
                   <span className={stats.graceDaysBalance === 0 ? 'text-red-400/50' : 'text-white/30'}>
-                    ☕ {stats.graceDaysBalance}/{graceDaysAllowance} Skips Left
+                    ☕ {stats.graceDaysBalance}/{graceDaysAllowance} {t('habit_skips_left', L)}
                   </span>
                 </div>
               )}
@@ -131,15 +135,17 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
         <div className="h-px w-full bg-white/10" />
         
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-          <span className="text-xs font-bold text-white/50 uppercase tracking-widest">How did you feel?</span>
+          <span className="text-xs font-bold text-white/50 uppercase tracking-widest">
+            {t('habit_how_did_you_feel', L)}
+          </span>
           
           <div className="flex gap-4">
             {/* Energy */}
             <div className="flex bg-black/30 rounded-full p-1 border border-white/5">
               {[
-                { val: 'low', emoji: '🪫', label: 'Low Energy' },
-                { val: 'medium', emoji: '🔋', label: 'Normal' },
-                { val: 'high', emoji: '⚡', label: 'High Energy' }
+                { val: 'low', emoji: '🪫', label: t('habit_energy_low', L) },
+                { val: 'medium', emoji: '🔋', label: t('habit_normal', L) },
+                { val: 'high', emoji: '⚡', label: t('habit_energy_high', L) }
               ].map(e => (
                 <button
                   key={e.val}
@@ -157,9 +163,9 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
             {/* Mood */}
             <div className="flex bg-black/30 rounded-full p-1 border border-white/5">
               {[
-                { val: 'bad', emoji: '😩', label: 'Bad Mood' },
-                { val: 'okay', emoji: '😐', label: 'Okay' },
-                { val: 'great', emoji: '🤩', label: 'Great Mood' }
+                { val: 'bad', emoji: '😩', label: t('habit_mood_bad', L) },
+                { val: 'okay', emoji: '😐', label: t('habit_mood_okay', L) },
+                { val: 'great', emoji: '🤩', label: t('habit_mood_great', L) }
               ].map(m => (
                 <button
                   key={m.val}

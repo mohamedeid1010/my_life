@@ -1,8 +1,12 @@
 import React from 'react';
 import HabitCard from './HabitCard';
 import { Plus } from 'lucide-react';
+import usePreferences from '../../hooks/usePreferences';
+import { t } from '../../config/translations';
 
 export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, onOpenCreateModal }) {
+  const { language } = usePreferences();
+  const L = language;
   // Calculate today's overall progress
   const total = habits.length;
   const completed = habits.filter(h => h.stats.todayEntry?.status === 'completed').length;
@@ -15,10 +19,10 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-card p-4 sm:p-6">
         <div className="min-w-0 w-full md:w-auto">
           <h2 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">
-            Daily Habits
+            {t('habits_daily_title', L)}
           </h2>
           <p className="text-xs sm:text-sm font-medium text-white/40 mt-1">
-            Build consistency, one action at a time.
+            {t('habits_daily_desc', L)}
           </p>
         </div>
 
@@ -48,7 +52,9 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
                 {completed}/{total}
               </div>
             </div>
-            <span className="text-xs font-bold text-white/50 uppercase tracking-wider">Completed<br/>Today</span>
+            <span className="text-xs font-bold text-white/50 uppercase tracking-wider">
+              {t('habits_completed_today', L)}
+            </span>
           </div>
 
           <div className="w-px h-10 bg-white/10 hidden md:block" />
@@ -61,7 +67,7 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
           >
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
             <Plus size={18} className="text-violet-400 group-hover:scale-125 transition-transform shrink-0" />
-            <span className="text-sm font-bold text-white relative z-10 w-max">New Habit</span>
+            <span className="text-sm font-bold text-white relative z-10 w-max">{t('habits_new_habit', L)}</span>
           </button>
         </div>
       </div>

@@ -39,7 +39,7 @@ firebase deploy --only hosting
 ## أمر واحد يعمل كل حاجة
 
 ```bash
-git add -A && git commit -m "mobile margin update" && git push && npm run build && firebase deploy --only hosting
+git add -A && git commit -m "arabic language" && git push && npm run build && firebase deploy --only hosting
 ```
 
 ---

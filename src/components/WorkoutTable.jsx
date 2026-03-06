@@ -1,5 +1,7 @@
 import { CheckCircle2 } from 'lucide-react';
 import WeekRow from './WeekRow';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 const DAYS_OF_WEEK = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
@@ -42,29 +44,31 @@ export default function WorkoutTable({
 /* ---------- Sub-components ---------- */
 
 function Legend() {
+  const { language } = usePreferences();
+  const L = language;
   return (
     <div className="flex items-center justify-center sm:justify-end gap-6 p-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 flex-wrap">
       <div className="flex items-center gap-2">
         <CheckCircle2 size={16} className="text-emerald-500" />
-        Workout Done
+        {t('heatmap_status_workout', L)}
       </div>
       <div className="flex items-center gap-2">
         <div className="w-5 h-5 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-[10px]">
           B
         </div>
-        Locked Break (Goal Met)
+        {t('heatmap_status_locked_rest', L)}
       </div>
       <div className="flex items-center gap-2">
         <div className="w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-[10px]">
           B
         </div>
-        Auto Break (Streak Safe)
+        {t('heatmap_status_auto_rest', L)}
       </div>
       <div className="flex items-center gap-2">
         <div className="w-5 h-5 rounded-full bg-red-100 text-red-500 flex items-center justify-center font-bold text-[10px]">
           X
         </div>
-        Missed (Breaks Streak)
+        {t('missed_breaks_streak', L)}
       </div>
     </div>
   );

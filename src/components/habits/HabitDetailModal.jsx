@@ -1,10 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { X, Flame, Star, Coffee, Brain, Edit2, Check, Sparkles } from 'lucide-react';
 import { getLocalDateString } from '../../stores/useHabitStore';
+import usePreferences from '../../hooks/usePreferences';
+import { t } from '../../config/translations';
 
 const ICONS = ['💧', '📚', '🏃‍♂️', '🧘‍♀️', '🍎', '✍️', ' 기도', '🛌', '💪', '💻'];
 
 export default function HabitDetailModal({ habit, onClose, onUpdateHabit, onDeleteHabit, onLogEntry }) {
+  const { language } = usePreferences();
+  const L = language;
   const { name, icon, stats } = habit;
   const [isEditing, setIsEditing] = useState(false);
   
@@ -382,7 +386,7 @@ export default function HabitDetailModal({ habit, onClose, onUpdateHabit, onDele
                             timestamp: new Date().toISOString()
                           });
                         }}
-                        title={`${cell.date}: ${cell.status}${cell.isFuture ? ' (Future)' : ' • Click to toggle'}`}
+                        title={`${cell.date}: ${cell.status}${cell.isFuture ? ` (${t('status_future', L)})` : ` • ${t('click_to_toggle', L)}`}`}
                         className={`w-7 h-7 sm:w-10 sm:h-10 mx-auto rounded-full transition-all ${!cell.isFuture ? 'hover:ring-2 hover:ring-white/50 cursor-pointer' : ''} relative flex items-center justify-center ${bgColor}`}
                      >
                        <span className={`text-[10px] sm:text-xs ${textColor} z-10 relative`}>
@@ -395,10 +399,10 @@ export default function HabitDetailModal({ habit, onClose, onUpdateHabit, onDele
             </div>
             
             <div className="flex flex-wrap items-center gap-4 mt-3 text-[10px] font-bold text-white/40 uppercase tracking-widest justify-end">
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-white/5" /> Pending</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> Missed</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-yellow-500/50 flex items-center justify-center text-[8px] text-white font-bold">G</div> Grace</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center text-[8px] text-white font-bold">✓</div> Success</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-white/5" /> {t('status_pending', L)}</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> {t('status_missed', L)}</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-yellow-500/50 flex items-center justify-center text-[8px] text-white font-bold">G</div> {t('status_grace', L)}</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-sm bg-emerald-500 flex items-center justify-center text-[8px] text-white font-bold">✓</div> {t('status_success', L)}</div>
             </div>
           </div>
 

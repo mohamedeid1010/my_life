@@ -10,6 +10,8 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import usePreferences from '../hooks/usePreferences';
+import { t } from '../config/translations';
 
 /* ─────────────── Google "G" Logo (inline SVG) ─────────────── */
 
@@ -27,6 +29,8 @@ function GoogleIcon({ size = 18 }) {
 /* ─────────────── LoginPage Component ─────────────── */
 
 export default function LoginPage() {
+  const { language } = usePreferences();
+  const L = language;
   // ── Zustand auth store ──
   const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
   const signUpWithEmail = useAuthStore((s) => s.signUpWithEmail);
@@ -61,7 +65,7 @@ export default function LoginPage() {
         await loginWithEmail(email, password);
       } else {
         if (!name.trim()) {
-          setLocalError('Please enter your name');
+          setLocalError(t('auth_error_enter_name', L));
           setLoading(false);
           return;
         }
@@ -71,13 +75,13 @@ export default function LoginPage() {
       // Map Firebase error codes to user-friendly messages
       const code = err.code;
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setLocalError('Invalid email or password');
+        setLocalError(t('auth_error_invalid_credentials', L));
       } else if (code === 'auth/email-already-in-use') {
-        setLocalError('Email already registered. Try logging in.');
+        setLocalError(t('auth_error_email_in_use', L));
       } else if (code === 'auth/weak-password') {
-        setLocalError('Password must be at least 6 characters');
+        setLocalError(t('auth_error_weak_password', L));
       } else if (code === 'auth/invalid-email') {
-        setLocalError('Invalid email address');
+        setLocalError(t('auth_error_invalid_email', L));
       } else {
         setLocalError(err.message);
       }
@@ -99,7 +103,7 @@ export default function LoginPage() {
     } catch (err) {
       // User closed the popup or network error
       if (err.code !== 'auth/popup-closed-by-user') {
-        setLocalError(err.message || 'Google sign-in failed');
+        setLocalError(err.message || t('auth_error_google_failed', L));
       }
     } finally {
       setGoogleLoading(false);
@@ -150,7 +154,7 @@ export default function LoginPage() {
             Horizon
           </h1>
           <p className="text-sm text-white/30 mt-1">
-            {isLogin ? 'Welcome back! Sign in to continue' : 'Create your account'}
+            {isLogin ? t('auth_welcome_back', L) : t('auth_create_account', L)}
           </p>
         </div>
 
@@ -172,7 +176,7 @@ export default function LoginPage() {
               <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
               <input
                 type="text"
-                placeholder="Your Name"
+                placeholder={t('auth_name_placeholder', L)}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full pl-10 pr-4 py-3.5 rounded-xl text-sm font-semibold text-white/90 placeholder:text-white/20 outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
@@ -186,7 +190,7 @@ export default function LoginPage() {
             <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
             <input
               type="email"
-              placeholder="Email Address"
+              placeholder={t('auth_email_placeholder', L)}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -200,7 +204,7 @@ export default function LoginPage() {
             <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
             <input
               type="password"
-              placeholder="Password"
+              placeholder={t('auth_password_placeholder', L)}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -224,7 +228,7 @@ export default function LoginPage() {
               <Loader2 size={20} className="animate-spin" />
             ) : (
               <>
-                {isLogin ? 'Sign In' : 'Create Account'}
+                {isLogin ? t('auth_sign_in', L) : t('auth_sign_up', L)}
                 <ArrowRight size={18} />
               </>
             )}
@@ -235,7 +239,7 @@ export default function LoginPage() {
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
           <span className="text-xs font-semibold text-white/20 uppercase tracking-wider">
-            or continue with
+            {t('auth_or_continue_with', L)}
           </span>
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
         </div>
@@ -256,7 +260,7 @@ export default function LoginPage() {
           ) : (
             <>
               <GoogleIcon size={18} />
-              <span>Google</span>
+              <span>{t('auth_google', L)}</span>
             </>
           )}
         </button>
@@ -267,7 +271,7 @@ export default function LoginPage() {
             onClick={toggleMode}
             className="text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors"
           >
-            {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+            {isLogin ? t('auth_toggle_to_signup', L) : t('auth_toggle_to_login', L)}
           </button>
         </div>
       </div>

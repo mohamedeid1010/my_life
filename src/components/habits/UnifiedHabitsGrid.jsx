@@ -1,8 +1,12 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
 import { Plus, Check, Clock, Edit2 } from 'lucide-react';
+import usePreferences from '../../hooks/usePreferences';
+import { t } from '../../config/translations';
 
 export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
+  const { language } = usePreferences();
+  const L = language;
   const scrollRef = useRef(null);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -162,7 +166,7 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
                               timestamp: new Date().toISOString()
                             });
                           }}
-                          title={`${habit.name} - ${day.dateStr}${entry?.status ? ` (${entry.status})` : ''}${isBeforeStart ? ' (Before Start)' : isFuture ? ' (Future)' : ' • Click to toggle'}`}
+                          title={`${habit.name} - ${day.dateStr}${entry?.status ? ` (${entry.status})` : ''}${isBeforeStart ? ` (${t('status_before_start', L)})` : isFuture ? ` (${t('status_future', L)})` : ` • ${t('click_to_toggle', L)}`}`}
                           className={`w-6 h-6 rounded flex items-center justify-center relative ${!isBeforeStart && !isFuture ? 'hover:ring-2 hover:ring-white/50 hover:z-20 cursor-pointer' : ''} transition-all ${bgColor}`}
                         />
                       );
@@ -177,10 +181,10 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
       
       {/* Legend */}
       <div className="flex items-center justify-end gap-4 text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2">
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-white/5" /> Pending</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> Missed</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-yellow-500/50" /> Grace</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /> Success</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-white/5" /> {t('status_pending', L)}</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> {t('status_missed', L)}</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-yellow-500/50" /> {t('status_grace', L)}</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /> {t('status_success', L)}</div>
       </div>
     </div>
   );

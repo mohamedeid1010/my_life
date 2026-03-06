@@ -25,7 +25,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 500 * 1024) {
-      alert('Image must be smaller than 500KB');
+      alert(t('settings_image_too_large', L));
       return;
     }
     const reader = new FileReader();
@@ -87,7 +87,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
   const TABS = [
     { id: 'account', label: t('settings_account', L), icon: User },
     { id: 'appearance', label: t('settings_appearance', L), icon: Palette },
-    { id: 'navigation', label: t('settings_navigation', L) || 'Navigation', icon: Navigation },
+    { id: 'navigation', label: t('settings_navigation', L), icon: Navigation },
   ];
 
   return (
@@ -332,7 +332,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
                       <button
                         onClick={() => removeNavPage(item.id)}
                         className="p-1.5 rounded-lg text-red-400/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                        title={L === 'ar' ? 'إزالة' : 'Remove'}
+                        title={t('settings_remove', L)}
                       >
                         <X size={14} />
                       </button>
@@ -345,7 +345,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
               {availableToAdd.length > 0 && (
                 <div>
                   <label className="text-[10px] uppercase font-bold text-white/40 tracking-widest mb-2 block">
-                    {L === 'ar' ? 'إضافة صفحات' : 'Add Pages'}
+                    {t('settings_add_pages', L)}
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {availableToAdd.map(page => (
@@ -370,7 +370,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
                 }}
                 className="w-full py-2.5 rounded-xl text-xs font-bold text-white/30 bg-white/5 hover:bg-white/10 border border-white/5 transition-all"
               >
-                {L === 'ar' ? 'إعادة التعيين للافتراضي' : 'Reset to Default'}
+                {t('settings_reset_default', L)}
               </button>
             </div>
           )}

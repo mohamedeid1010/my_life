@@ -1,21 +1,26 @@
 import React, { useState } from 'react';
 import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
+import usePreferences from '../../hooks/usePreferences';
+import { t } from '../../config/translations';
 
 const CATEGORIES = [
-  { id: 'health', label: 'Health', icon: <Heart size={16} /> },
-  { id: 'fitness', label: 'Fitness', icon: <Dumbbell size={16} /> },
-  { id: 'productivity', label: 'Productivity', icon: <Briefcase size={16} /> },
-  { id: 'learning', label: 'Learning', icon: <BookOpen size={16} /> },
-  { id: 'spirituality', label: 'Spirituality', icon: <Sparkles size={16} /> },
-  { id: 'islamic', label: 'Islamic', icon: <Moon size={16} /> },
-  { id: 'social', label: 'Social', icon: <Users size={16} /> },
-  { id: 'finance', label: 'Finance', icon: <DollarSign size={16} /> },
-  { id: 'mindfulness', label: 'Mindfulness', icon: <Sparkles size={16} /> },
-  { id: 'other', label: 'Other', icon: <Target size={16} /> },
+  { id: 'health', labelKey: 'habit_category_health', icon: <Heart size={16} /> },
+  { id: 'fitness', labelKey: 'habit_category_fitness', icon: <Dumbbell size={16} /> },
+  { id: 'productivity', labelKey: 'habit_category_productivity', icon: <Briefcase size={16} /> },
+  { id: 'learning', labelKey: 'habit_category_learning', icon: <BookOpen size={16} /> },
+  { id: 'spirituality', labelKey: 'habit_category_spirituality', icon: <Sparkles size={16} /> },
+  { id: 'islamic', labelKey: 'habit_category_islamic', icon: <Moon size={16} /> },
+  { id: 'social', labelKey: 'habit_category_social', icon: <Users size={16} /> },
+  { id: 'finance', labelKey: 'habit_category_finance', icon: <DollarSign size={16} /> },
+  { id: 'mindfulness', labelKey: 'habit_category_mindfulness', icon: <Sparkles size={16} /> },
+  { id: 'other', labelKey: 'habit_category_other', icon: <Target size={16} /> },
 ];
 
 export default function CreateHabitForm({ onClose, onSave }) {
+  const { language } = usePreferences();
+  const L = language;
+  const isAr = L === 'ar';
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('💧');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -53,13 +58,13 @@ export default function CreateHabitForm({ onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="glass-card w-full max-w-lg overflow-hidden shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Sparkles className="text-violet-400" />
-            Build a New Habit
+            {t('habits_build_new', L)}
           </h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white/50 transition-colors">
             <X size={20} />
@@ -67,12 +72,12 @@ export default function CreateHabitForm({ onClose, onSave }) {
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh] space-y-6" dir="ltr">
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh] space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
           
           {/* Name & Icon */}
           <div className="flex gap-4 items-end">
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Icon</label>
+              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_icon', L)}</label>
               <div className="relative">
                 <button 
                   type="button"
@@ -97,13 +102,13 @@ export default function CreateHabitForm({ onClose, onSave }) {
             </div>
 
             <div className="flex-grow flex flex-col gap-2">
-              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Habit Name</label>
+              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habits_form_name', L)}</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Read 20 pages"
+                placeholder={t('habit_placeholder_example', L)}
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500 transition-colors text-lg font-medium"
               />
             </div>
@@ -111,7 +116,7 @@ export default function CreateHabitForm({ onClose, onSave }) {
 
           {/* Start Date */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Start Date</label>
+            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_start_date', L)}</label>
             <input
               type="date"
               required
@@ -120,12 +125,12 @@ export default function CreateHabitForm({ onClose, onSave }) {
               className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors font-medium color-scheme-dark"
               style={{ colorScheme: 'dark' }}
             />
-            <p className="text-[10px] text-white/40 mt-1">If you started this habit in the past, set the date here to track your true progress.</p>
+            <p className="text-[10px] text-white/40 mt-1">{t('habit_start_date_hint', L)}</p>
           </div>
 
           {/* Category */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Category</label>
+            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_category', L)}</label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(cat => (
                 <button
@@ -139,7 +144,7 @@ export default function CreateHabitForm({ onClose, onSave }) {
                   }`}
                 >
                   {cat.icon}
-                  <span className="font-bold text-sm tracking-wide">{cat.label}</span>
+                  <span className="font-bold text-sm tracking-wide">{t(cat.labelKey, L)}</span>
                 </button>
               ))}
             </div>

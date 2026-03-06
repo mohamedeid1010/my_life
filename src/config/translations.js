@@ -116,6 +116,118 @@ const translations = {
     // Life Overview
     overview_title: 'نظرة عامة',
     overview_desc: 'ملخص شامل لنشاطك اليومي، أهدافك، والإنجازات التي حققتها.',
+
+    // Auth (Login / Signup)
+    auth_welcome_back: 'Welcome back! Sign in to continue',
+    auth_create_account: 'Create your account',
+    auth_name_placeholder: 'Your Name',
+    auth_email_placeholder: 'Email Address',
+    auth_password_placeholder: 'Password',
+    auth_sign_in: 'Sign In',
+    auth_sign_up: 'Create Account',
+    auth_toggle_to_signup: "Don't have an account? Sign Up",
+    auth_toggle_to_login: 'Already have an account? Sign In',
+    auth_or_continue_with: 'or continue with',
+    auth_google: 'Google',
+    auth_error_enter_name: 'Please enter your name',
+    auth_error_invalid_credentials: 'Invalid email or password',
+    auth_error_email_in_use: 'Email already registered. Try logging in.',
+    auth_error_weak_password: 'Password must be at least 6 characters',
+    auth_error_invalid_email: 'Invalid email address',
+    auth_error_google_failed: 'Google sign-in failed',
+
+    // Home widgets (LifeOverview)
+    home_welcome_title: 'Welcome',
+    home_welcome_desc: 'Add widgets below to customize your home page',
+    home_widgets_label: 'Widgets',
+    home_manage: 'Manage',
+    home_current_widgets: 'Current Widgets',
+    home_add_widget: 'Add Widget',
+    home_empty_widgets_hint: 'Click "Manage" to add widgets',
+
+    // Heatmap UX
+    heatmap_hint: 'Click any day to mark as done · Completed weeks glow with a 🏆',
+    heatmap_status_workout: 'Workout Done ✅',
+    heatmap_status_locked_rest: 'Rest (Goal Met) 🏆',
+    heatmap_status_auto_rest: 'Rest Day 😴',
+    heatmap_status_missed: 'Missed ❌',
+    heatmap_status_pending: 'Pending',
+    heatmap_legend_break: 'Break',
+    heatmap_legend_workout: 'Workout ✅',
+
+    // Habits dashboard
+    habits_daily_title: 'Daily Habits',
+    habits_daily_desc: 'Build consistency, one action at a time.',
+    habits_completed_today: 'Completed Today',
+    habits_new_habit: 'New Habit',
+
+    // Habit card (tooltips / labels)
+    habit_mark_pending: 'Mark as Pending',
+    habit_mark_completed: 'Mark as Completed',
+    habit_current_streak: 'Current Streak',
+    habit_grace_days_left: 'Grace days left this month',
+    habit_energy_low: 'Low Energy',
+    habit_energy_medium: 'Medium Energy',
+    habit_energy_high: 'High Energy',
+    habit_skips_left: 'Skips Left',
+    habit_how_did_you_feel: 'How did you feel?',
+    habit_mood_bad: 'Bad Mood',
+    habit_mood_okay: 'Okay',
+    habit_mood_great: 'Great Mood',
+    habit_normal: 'Normal',
+
+    // Habits create/edit
+    habits_build_new: 'Build a New Habit',
+    habits_form_name: 'Habit Name',
+    habits_form_save: 'Save Habit',
+
+    // Gym header
+    gym_weekly_goal: 'Weekly Goal:',
+    gym_export_csv: 'Export CSV',
+
+    // Daily action panel
+    daily_action_title: 'Daily Action',
+    daily_action_subtitle: "Today's commitment",
+
+    // Unified habits grid / detail
+    status_pending: 'Pending',
+    status_missed: 'Missed',
+    status_future: 'Future',
+    status_before_start: 'Before Start',
+    click_to_toggle: 'Click to toggle',
+    status_grace: 'Grace',
+    status_success: 'Success',
+
+    // Daily action CTA
+    daily_today_completed: 'Today Completed ✨',
+    daily_mark_today_complete: 'Mark Today Complete',
+    daily_celebration: 'Amazing! Keep the streak alive!',
+
+    // Create habit form (core)
+    habit_icon: 'Icon',
+    habit_placeholder_example: 'e.g. Read 20 pages',
+    habit_start_date: 'Start Date',
+    habit_start_date_hint: 'If you started this habit in the past, set the date here to track your true progress.',
+    habit_category: 'Category',
+    habit_category_health: 'Health',
+    habit_category_fitness: 'Fitness',
+    habit_category_productivity: 'Productivity',
+    habit_category_learning: 'Learning',
+    habit_category_spirituality: 'Spirituality',
+    habit_category_islamic: 'Islamic',
+    habit_category_social: 'Social',
+    habit_category_finance: 'Finance',
+    habit_category_mindfulness: 'Mindfulness',
+    habit_category_other: 'Other',
+
+    // Settings misc
+    settings_image_too_large: 'Image must be smaller than 500KB',
+    settings_remove: 'Remove',
+    settings_add_pages: 'Add Pages',
+    settings_reset_default: 'Reset to Default',
+
+    // Workout table
+    missed_breaks_streak: 'Missed (Breaks Streak)',
   },
   ar: {
     // Navigation
@@ -233,6 +345,118 @@ const translations = {
     // Life Overview
     overview_title: 'نظرة عامة',
     overview_desc: 'ملخص شامل لنشاطك اليومي، أهدافك، والإنجازات التي حققتها.',
+
+    // Auth (Login / Signup)
+    auth_welcome_back: 'مرحباً بعودتك! سجّل الدخول للمتابعة',
+    auth_create_account: 'أنشئ حسابك',
+    auth_name_placeholder: 'اسمك',
+    auth_email_placeholder: 'البريد الإلكتروني',
+    auth_password_placeholder: 'كلمة المرور',
+    auth_sign_in: 'تسجيل الدخول',
+    auth_sign_up: 'إنشاء حساب',
+    auth_toggle_to_signup: 'ليس لديك حساب؟ أنشئ حساباً',
+    auth_toggle_to_login: 'لديك حساب بالفعل؟ سجّل الدخول',
+    auth_or_continue_with: 'أو أكمل باستخدام',
+    auth_google: 'Google',
+    auth_error_enter_name: 'من فضلك أدخل اسمك',
+    auth_error_invalid_credentials: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
+    auth_error_email_in_use: 'هذا البريد مسجل بالفعل. جرّب تسجيل الدخول.',
+    auth_error_weak_password: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+    auth_error_invalid_email: 'البريد الإلكتروني غير صالح',
+    auth_error_google_failed: 'فشل تسجيل الدخول عبر Google',
+
+    // Home widgets (LifeOverview)
+    home_welcome_title: 'مرحباً بك',
+    home_welcome_desc: 'أضف الأقسام التي تريدها من الأسفل لتخصيص صفحتك الرئيسية',
+    home_widgets_label: 'الأقسام',
+    home_manage: 'تعديل',
+    home_current_widgets: 'الأقسام الحالية',
+    home_add_widget: 'إضافة قسم',
+    home_empty_widgets_hint: 'اضغط على "تعديل" لإضافة أقسام',
+
+    // Heatmap UX
+    heatmap_hint: 'اضغط على أي يوم لتسجيله · الأسابيع المكتملة يظهر عليها 🏆',
+    heatmap_status_workout: 'تم التمرين ✅',
+    heatmap_status_locked_rest: 'راحة (الهدف متحقق) 🏆',
+    heatmap_status_auto_rest: 'يوم راحة 😴',
+    heatmap_status_missed: 'فائت ❌',
+    heatmap_status_pending: 'قيد الانتظار',
+    heatmap_legend_break: 'راحة',
+    heatmap_legend_workout: 'تمرين ✅',
+
+    // Habits dashboard
+    habits_daily_title: 'العادات اليومية',
+    habits_daily_desc: 'ابنِ الاستمرارية، خطوة بخطوة.',
+    habits_completed_today: 'مكتمل اليوم',
+    habits_new_habit: 'عادة جديدة',
+
+    // Habit card (tooltips / labels)
+    habit_mark_pending: 'تعيين كقيد الانتظار',
+    habit_mark_completed: 'تعيين كمكتمل',
+    habit_current_streak: 'السلسلة الحالية',
+    habit_grace_days_left: 'أيام السماح المتبقية هذا الشهر',
+    habit_energy_low: 'طاقة منخفضة',
+    habit_energy_medium: 'طاقة متوسطة',
+    habit_energy_high: 'طاقة عالية',
+    habit_skips_left: 'تخطي متبقي',
+    habit_how_did_you_feel: 'كيف كان شعورك؟',
+    habit_mood_bad: 'مزاج سيئ',
+    habit_mood_okay: 'عادي',
+    habit_mood_great: 'ممتاز',
+    habit_normal: 'عادي',
+
+    // Habits create/edit
+    habits_build_new: 'أنشئ عادة جديدة',
+    habits_form_name: 'اسم العادة',
+    habits_form_save: 'حفظ العادة',
+
+    // Gym header
+    gym_weekly_goal: 'هدف الأسبوع:',
+    gym_export_csv: 'تصدير CSV',
+
+    // Daily action panel
+    daily_action_title: 'الإجراء اليومي',
+    daily_action_subtitle: 'التزام اليوم',
+
+    // Unified habits grid / detail
+    status_pending: 'قيد الانتظار',
+    status_missed: 'فائت',
+    status_future: 'مستقبل',
+    status_before_start: 'قبل البداية',
+    click_to_toggle: 'اضغط للتغيير',
+    status_grace: 'سماح',
+    status_success: 'نجاح',
+
+    // Daily action CTA
+    daily_today_completed: 'تم إكمال اليوم ✨',
+    daily_mark_today_complete: 'إكمال اليوم',
+    daily_celebration: 'رائع! حافظ على السلسلة!',
+
+    // Create habit form (core)
+    habit_icon: 'الأيقونة',
+    habit_placeholder_example: 'مثال: اقرأ 20 صفحة',
+    habit_start_date: 'تاريخ البداية',
+    habit_start_date_hint: 'إذا بدأت هذه العادة في الماضي، عدّل التاريخ هنا لتتبع تقدمك الحقيقي.',
+    habit_category: 'التصنيف',
+    habit_category_health: 'الصحة',
+    habit_category_fitness: 'اللياقة',
+    habit_category_productivity: 'الإنتاجية',
+    habit_category_learning: 'التعلم',
+    habit_category_spirituality: 'الروحانيات',
+    habit_category_islamic: 'إسلامي',
+    habit_category_social: 'اجتماعي',
+    habit_category_finance: 'الماليات',
+    habit_category_mindfulness: 'اليقظة',
+    habit_category_other: 'أخرى',
+
+    // Settings misc
+    settings_image_too_large: 'الصورة يجب أن تكون أقل من 500KB',
+    settings_remove: 'إزالة',
+    settings_add_pages: 'إضافة صفحات',
+    settings_reset_default: 'إعادة التعيين للافتراضي',
+
+    // Workout table
+    missed_breaks_streak: 'فائت (يقطع السلسلة)',
   }
 };
 

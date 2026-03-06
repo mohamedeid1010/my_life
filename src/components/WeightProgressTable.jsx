@@ -37,16 +37,16 @@ export default function WeightProgressTable({ enrichedData, updateWeight, update
   }, [enrichedData]);
 
   return (
-    <div className="glass-card p-6 space-y-4">
+    <div className="glass-card p-4 sm:p-6 space-y-4">
       <div>
-        <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">
+        <h3 className="text-lg sm:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-400 to-cyan-400">
           {t('weight_progress', L)}
         </h3>
-        <p className="text-xs text-white/30 font-semibold mt-0.5">{t('track_composition', L)}</p>
+        <p className="text-[10px] sm:text-xs text-white/30 font-semibold mt-0.5">{t('track_composition', L)}</p>
       </div>
 
-      <div className="overflow-x-auto custom-scrollbar">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto custom-scrollbar -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <table className="w-full text-xs sm:text-sm min-w-[320px]">
           <thead>
             <tr className="border-b border-white/10">
               <th className="text-left py-3 px-3 text-[10px] uppercase tracking-widest font-bold text-white/30">{t('week', L)}</th>

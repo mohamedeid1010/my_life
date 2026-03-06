@@ -12,20 +12,20 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
   const progressPercent = total === 0 ? 0 : Math.round((completed / total) * 100);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       
       {/* Top Section: Progress & Create */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-card p-6">
-        <div>
-          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between glass-card p-4 sm:p-6">
+        <div className="min-w-0 w-full md:w-auto">
+          <h2 className="text-xl sm:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-fuchsia-400">
             Daily Habits
           </h2>
-          <p className="text-sm font-medium text-white/40 mt-1">
+          <p className="text-xs sm:text-sm font-medium text-white/40 mt-1">
             Build consistency, one action at a time.
           </p>
         </div>
 
-        <div className="flex items-center gap-6 w-full md:w-auto">
+        <div className="flex items-center gap-4 sm:gap-6 w-full md:w-auto">
           {/* Circular Progress */}
           <div className="flex items-center gap-3">
             <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
@@ -58,11 +58,12 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
 
           {/* Create Button */}
           <button
+            type="button"
             onClick={onOpenCreateModal}
-            className="group relative px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-lg overflow-hidden flex items-center gap-2 flex-grow md:flex-grow-0 justify-center"
+            className="touch-target group relative px-4 py-3 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-lg overflow-hidden flex items-center gap-2 flex-grow md:flex-grow-0 justify-center min-h-[48px]"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Plus size={18} className="text-violet-400 group-hover:scale-125 transition-transform" />
+            <Plus size={18} className="text-violet-400 group-hover:scale-125 transition-transform shrink-0" />
             <span className="text-sm font-bold text-white relative z-10 w-max">New Habit</span>
           </button>
         </div>

@@ -9,7 +9,7 @@ export default function HeroSection({ stats }) {
   const { language } = usePreferences();
   const L = language;
   return (
-    <div className="glass-card p-8 md:p-10 relative overflow-hidden animate-slide-up">
+    <div className="glass-card p-5 sm:p-6 md:p-8 lg:p-10 relative overflow-hidden animate-slide-up">
       {/* Background gradient orbs */}
       <div
         className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-20 blur-3xl"
@@ -31,12 +31,12 @@ export default function HeroSection({ stats }) {
         {/* Huge streak number */}
         <div className="animate-count">
           <span
-            className="text-8xl md:text-9xl font-black tracking-tighter gradient-text glow-accent leading-none"
+            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter gradient-text glow-accent leading-none"
           >
             {stats.currentStreak}
           </span>
         </div>
-        <span className="text-2xl md:text-3xl font-bold text-white/50 uppercase tracking-widest mt-2">
+        <span className="text-xl sm:text-2xl md:text-3xl font-bold text-white/50 uppercase tracking-widest mt-2">
           {t('gym_streak', L)}
         </span>
 

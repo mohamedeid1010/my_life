@@ -126,37 +126,41 @@ export default function GymTracker({
 
       {/* Current Week Weight & Body Fat Quick Entry */}
       {currentWeek && (
-        <div className="glass-card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-white/50 uppercase tracking-widest">{t('week', L)} {currentWeek.week} — {t('body_stats', L)}</h3>
-            <p className="text-xs text-white/30 mt-0.5">{t('log_weight_fat', L)}</p>
+        <div className="glass-card p-4 sm:p-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-sm font-bold text-white/50 uppercase tracking-widest">{t('week', L)} {currentWeek.week} — {t('body_stats', L)}</h3>
+            <p className="text-[10px] sm:text-xs text-white/30 mt-0.5">{t('log_weight_fat', L)}</p>
           </div>
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5">
-              <span className="text-lg">⚖️</span>
-              <div className="flex flex-col">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+            <div className="flex items-center gap-2 bg-black/20 px-3 sm:px-4 py-2 rounded-xl border border-white/5 min-w-0">
+              <span className="text-base sm:text-lg shrink-0">⚖️</span>
+              <div className="flex flex-col min-w-0">
                 <label className="text-[10px] uppercase font-bold text-fuchsia-400">{t('weight_kg', L)}</label>
                 <input
                   type="number"
-                  min="30" max="300" step="0.1"
+                  min="30"
+                  max="300"
+                  step="0.1"
                   value={currentWeek.weight || ''}
                   onChange={e => updateWeight(currentWeekIdx, e.target.value)}
                   placeholder="—"
-                  className="w-20 bg-transparent text-white font-black text-lg focus:outline-none placeholder-white/20"
+                  className="w-16 sm:w-20 bg-transparent text-white font-black text-base sm:text-lg focus:outline-none placeholder-white/20"
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-black/20 px-4 py-2 rounded-xl border border-white/5">
-              <span className="text-lg">📊</span>
-              <div className="flex flex-col">
+            <div className="flex items-center gap-2 bg-black/20 px-3 sm:px-4 py-2 rounded-xl border border-white/5 min-w-0">
+              <span className="text-base sm:text-lg shrink-0">📊</span>
+              <div className="flex flex-col min-w-0">
                 <label className="text-[10px] uppercase font-bold text-cyan-400">{t('body_fat', L)}</label>
                 <input
                   type="number"
-                  min="1" max="60" step="0.1"
+                  min="1"
+                  max="60"
+                  step="0.1"
                   value={currentWeek.bodyFat || ''}
                   onChange={e => updateBodyFat(currentWeekIdx, e.target.value)}
                   placeholder="—"
-                  className="w-20 bg-transparent text-white font-black text-lg focus:outline-none placeholder-white/20"
+                  className="w-16 sm:w-20 bg-transparent text-white font-black text-base sm:text-lg focus:outline-none placeholder-white/20"
                 />
               </div>
             </div>

@@ -196,42 +196,50 @@ function Dashboard({ user, logout }) {
     <div
       dir={isAr ? 'rtl' : 'ltr'}
       className="min-h-screen font-sans"
-      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+      style={{
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'var(--safe-bottom)',
+        paddingLeft: 'var(--safe-left)',
+        paddingRight: 'var(--safe-right)',
+      }}
     >
       {/* ═══ Professional Floating Glass Navbar ═══ */}
       <nav
-        className="sticky top-4 z-50 px-4 md:px-0 mx-auto max-w-7xl transition-all duration-300"
+        className="sticky z-50 mx-auto max-w-7xl transition-all duration-300 px-3 sm:px-4 md:px-6"
+        style={{ top: 'calc(var(--safe-top) + 0.5rem)' }}
       >
         {/* Glass Pill Container */}
-        <div 
-          className="flex items-center justify-between px-4 py-3 md:px-6 rounded-2xl md:rounded-full backdrop-blur-xl border"
-          style={{ 
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 sm:px-4 sm:py-3 md:px-6 rounded-2xl md:rounded-full backdrop-blur-xl border min-h-[48px]"
+          style={{
             background: 'rgba(255, 255, 255, 0.03)',
             boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
-            borderColor: 'var(--border-glass)'
+            borderColor: 'var(--border-glass)',
           }}
         >
           {/* Logo + Nav Tabs */}
-          <div className="flex items-center gap-2 md:gap-6">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-6 min-w-0 flex-1">
             {/* Logo */}
-            <div className="flex items-center gap-2 mr-2 md:mr-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <div
-                className="w-9 h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl flex items-center justify-center p-1 md:p-1.5 shadow-sm"
+                className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl md:rounded-2xl flex items-center justify-center p-1 shadow-sm"
                 style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.1), rgba(99,102,241,0.1))' }}
               >
-                <img 
-                  src="/horizon-logo.png" 
-                  alt="Horizon" 
+                <img
+                  src="/horizon-logo.png"
+                  alt="Horizon"
                   className="w-full h-full object-contain brightness-110"
                 />
               </div>
-              <span className="hidden md:block text-base md:text-lg font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              <span className="hidden md:block text-base md:text-lg font-black tracking-tight truncate" style={{ color: 'var(--text-primary)' }}>
                 Horizon
               </span>
             </div>
 
-            {/* Dynamic Navigation tabs */}
-            <div className="flex bg-white/[0.03] rounded-xl p-1 gap-0.5" style={{ border: '1px solid var(--border-glass)' }}>
+            {/* Dynamic Navigation tabs — scroll on very small screens */}
+            <div className="flex bg-white/[0.03] rounded-xl p-1 gap-0.5 overflow-x-auto custom-scrollbar flex-1 min-w-0 max-w-full" style={{ border: '1px solid var(--border-glass)' }}>
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -239,18 +247,14 @@ function Dashboard({ user, logout }) {
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 ${
-                      isActive
-                        ? 'text-violet-400 shadow-sm'
-                        : 'text-white/40 hover:text-white/70'
+                    type="button"
+                    className={`touch-target flex items-center justify-center gap-1.5 px-2.5 sm:px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 shrink-0 ${
+                      isActive ? 'text-violet-400 shadow-sm' : 'text-white/40 hover:text-white/70'
                     }`}
-                    style={isActive ? {
-                      background: 'rgba(139,92,246,0.12)',
-                      boxShadow: '0 1px 4px rgba(139,92,246,0.15)',
-                    } : {}}
+                    style={isActive ? { background: 'rgba(139,92,246,0.12)', boxShadow: '0 1px 4px rgba(139,92,246,0.15)' } : {}}
                   >
-                    <Icon size={15} />
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <Icon size={16} className="shrink-0" />
+                    <span className="hidden sm:inline truncate">{item.label}</span>
                   </button>
                 );
               })}
@@ -258,44 +262,46 @@ function Dashboard({ user, logout }) {
           </div>
 
           {/* Right: Sync + User Avatar + Settings */}
-          <div className="flex items-center gap-3" dir="ltr">
-            {/* Sync Badge */}
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold tracking-wider"
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0" dir="ltr">
+            {/* Sync Badge — compact on mobile */}
+            <div
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold tracking-wider ${saving ? 'text-amber-400/90' : 'text-emerald-400/90'}`}
               style={{ background: saving ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)' }}
             >
-              {saving ? (
-                <><CloudOff size={10} className="text-amber-400" /> <span className="text-amber-400/80">{t('saving', language)}</span></>
-              ) : (
-                <><Cloud size={10} className="text-emerald-400" /> <span className="text-emerald-400/80">{t('synced', language)}</span></>
-              )}
+              {saving ? <CloudOff size={12} /> : <Cloud size={12} />}
+              <span className="hidden sm:inline">{saving ? t('saving', language) : t('synced', language)}</span>
             </div>
 
             {/* User Avatar */}
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 cursor-pointer hover:ring-2 hover:ring-violet-500/30 transition-all"
+            <button
+              type="button"
+              className="touch-target w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0 hover:ring-2 hover:ring-violet-500/30 transition-all"
               style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)' }}
               onClick={() => setShowSettings(true)}
+              aria-label="Settings"
             >
               {profile?.photoURL ? (
                 <img src={profile.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
               ) : (
                 (profile?.name || user?.displayName || user?.email || '?')[0].toUpperCase()
               )}
-            </div>
+            </button>
 
             {/* Settings Gear */}
             <button
+              type="button"
               onClick={() => setShowSettings(true)}
-              className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
+              className="touch-target p-2.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-all"
+              aria-label="Settings"
             >
-              <Settings size={16} />
+              <Settings size={18} />
             </button>
           </div>
         </div>
       </nav>
 
       {/* ═══ Main Content — Suspense for lazy-loaded pages ═══ */}
-      <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:p-6 space-y-4 sm:space-y-6" style={{ paddingBottom: 'max(2rem, var(--safe-bottom))' }}>
         <Suspense fallback={<PageLoader />}>
           <div className="animate-fade-in">
             {activeTab === 'overview' && (

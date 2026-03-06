@@ -38,8 +38,8 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
   };
 
   return (
-    <div 
-      className={`glass-card p-5 transition-all duration-300 relative overflow-hidden group cursor-pointer ${
+    <div
+      className={`glass-card p-4 sm:p-5 transition-all duration-300 relative overflow-hidden group cursor-pointer ${
         isCompleted ? 'border-emerald-500/30 bg-emerald-500/5' : 'hover:bg-white/5'
       }`}
       onClick={() => onExpandDetails(habit)}
@@ -53,17 +53,18 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
 
       <div className="flex items-center justify-between relative z-10 w-full">
         {/* Left Side: Icon & Info */}
-        <div className="flex items-center gap-4">
-          <button 
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+          <button
+            type="button"
             onClick={handleToggle}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center text-3xl transition-transform duration-300 hover:scale-110 active:scale-95 ${isCompleted ? 'scale-110 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-black/20 hover:bg-black/40'}`}
+            className={`touch-target w-12 h-12 rounded-xl flex items-center justify-center text-2xl sm:text-3xl transition-transform duration-300 hover:scale-110 active:scale-95 shrink-0 ${isCompleted ? 'scale-110 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-black/20 hover:bg-black/40'}`}
             title={isCompleted ? "Mark as Pending" : "Mark as Completed"}
           >
             {icon}
           </button>
           
-          <div className="flex flex-col">
-            <h3 className={`font-bold text-lg transition-colors ${isCompleted ? 'text-white' : 'text-white/80'}`}>
+          <div className="flex flex-col min-w-0 flex-1">
+            <h3 className={`font-bold text-base sm:text-lg transition-colors truncate ${isCompleted ? 'text-white' : 'text-white/80'}`}>
               {name}
             </h3>
             

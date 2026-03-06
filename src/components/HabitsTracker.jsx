@@ -86,13 +86,14 @@ export default function HabitsTracker({ habitsData }) {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in relative z-0">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in relative z-0">
 
       {/* Section Manager Toggle */}
       <div className="flex justify-end">
         <button
+          type="button"
           onClick={() => setShowSectionManager(!showSectionManager)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all"
+          className="touch-target flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all min-h-[44px]"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <Settings size={14} />
@@ -110,19 +111,19 @@ export default function HabitsTracker({ habitsData }) {
               <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                 v[key] ? 'bg-white/5 border-white/10' : 'bg-white/[0.02] border-white/5 opacity-50'
               }`}>
-                <span className={`flex-1 text-sm font-bold ${v[key] ? 'text-white/70' : 'text-white/30'}`}>
+                <span className={`flex-1 text-xs sm:text-sm font-bold min-w-0 truncate ${v[key] ? 'text-white/70' : 'text-white/30'}`}>
                   {isAr ? sec.labelAr : sec.labelEn}
                 </span>
                 {!sec.locked && (
-                  <button onClick={() => toggleSection(key)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                  <button type="button" onClick={() => toggleSection(key)} className="touch-target p-2 rounded-lg hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
                     {v[key] ? <Eye size={14} className="text-emerald-400/60" /> : <EyeOff size={14} className="text-white/20" />}
                   </button>
                 )}
                 <div className="flex flex-col gap-0.5">
-                  <button onClick={() => moveSection(idx, -1)} disabled={idx === 0} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                  <button type="button" onClick={() => moveSection(idx, -1)} disabled={idx === 0} className="touch-target p-2 rounded hover:bg-white/10 disabled:opacity-20 min-h-[36px] flex items-center justify-center">
                     <ChevronUp size={12} className="text-white/40" />
                   </button>
-                  <button onClick={() => moveSection(idx, 1)} disabled={idx === sectionOrder.length - 1} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                  <button type="button" onClick={() => moveSection(idx, 1)} disabled={idx === sectionOrder.length - 1} className="touch-target p-2 rounded hover:bg-white/10 disabled:opacity-20 min-h-[36px] flex items-center justify-center">
                     <ChevronDown size={12} className="text-white/40" />
                   </button>
                 </div>

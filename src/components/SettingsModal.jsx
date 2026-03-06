@@ -91,28 +91,38 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm"
+      style={{
+        paddingTop: 'max(0.75rem, var(--safe-top))',
+        paddingBottom: 'max(0.75rem, var(--safe-bottom))',
+        paddingLeft: 'max(0.75rem, var(--safe-left))',
+        paddingRight: 'max(0.75rem, var(--safe-right))',
+      }}
+      onClick={onClose}
+    >
       <div
         className="glass-card w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-fade-in"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 pb-0">
-          <h2 className="text-xl font-black text-white/90">⚙️ {t('settings', L)}</h2>
-          <button onClick={onClose} className="text-white/30 hover:text-white/70 transition-colors">
+        <div className="flex items-center justify-between p-4 sm:p-6 pb-0 shrink-0">
+          <h2 className="text-lg sm:text-xl font-black text-white/90 truncate">⚙️ {t('settings', L)}</h2>
+          <button type="button" onClick={onClose} className="touch-target p-2 -m-2 text-white/30 hover:text-white/70 transition-colors" aria-label="Close">
             <X size={20} />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 px-6 pt-4 border-b border-white/5 overflow-x-auto">
+        <div className="flex gap-1 px-4 sm:px-6 pt-3 sm:pt-4 border-b border-white/5 overflow-x-auto custom-scrollbar shrink-0">
           {TABS.map(tab => {
             const Icon = tab.icon;
             return (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-t-xl transition-all whitespace-nowrap ${
+                className={`touch-target flex items-center gap-2 px-3 md:px-4 py-2.5 text-xs md:text-sm font-bold rounded-t-xl transition-all whitespace-nowrap min-h-[44px] ${
                   activeTab === tab.id
                     ? 'bg-violet-500/15 text-violet-300 border-b-2 border-violet-500'
                     : 'text-white/40 hover:text-white/60 hover:bg-white/5'
@@ -126,7 +136,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 custom-scrollbar min-h-0">
 
           {/* ─── ACCOUNT TAB ─── */}
           {activeTab === 'account' && (

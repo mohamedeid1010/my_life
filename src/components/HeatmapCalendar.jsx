@@ -76,21 +76,21 @@ export default function HeatmapCalendar({
     : ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
   return (
-    <div className="glass-card-static p-5 md:p-7 animate-slide-up" style={{ animationDelay: '0.25s' }}>
+    <div className="glass-card-static p-4 sm:p-5 md:p-7 animate-slide-up" style={{ animationDelay: '0.25s' }}>
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-white/90 tracking-tight">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+        <div className="min-w-0">
+          <h2 className="text-base sm:text-xl font-bold text-white/90 tracking-tight">
             {t('workout_activity', L)}
           </h2>
-          <p className="text-xs text-white/30 font-medium mt-1">
+          <p className="text-[10px] sm:text-xs text-white/30 font-medium mt-1 hidden xs:block">
             Click any day to mark as done · Completed weeks glow with a 🏆
           </p>
         </div>
       </div>
 
-      {/* Heatmap Grid */}
-      <div className="overflow-x-auto custom-scrollbar pb-3 relative">
+      {/* Heatmap Grid — smooth scroll on iOS */}
+      <div className="overflow-x-auto custom-scrollbar pb-3 relative -mx-1 px-1" style={{ WebkitOverflowScrolling: 'touch' }}>
         <div className="inline-block">
           {/* Month Labels Row */}
           <div className="flex ml-[44px] mb-2">
@@ -116,7 +116,7 @@ export default function HeatmapCalendar({
               {dayLabels.map((day) => (
                 <div
                   key={day}
-                  className="h-[20px] flex items-center text-[11px] font-bold text-white/25 leading-none select-none"
+                  className="h-[20px] heatmap-day-label-row flex items-center text-[11px] font-bold text-white/25 leading-none select-none"
                 >
                   {day}
                 </div>
@@ -206,8 +206,8 @@ export default function HeatmapCalendar({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-between mt-5 flex-wrap gap-3">
-        <div className="flex items-center gap-4 text-[11px] font-semibold text-white/30">
+      <div className="flex items-center justify-between mt-4 sm:mt-5 flex-wrap gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-[11px] font-semibold text-white/30 flex-wrap">
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#eab308' }} />
             Workout ✅

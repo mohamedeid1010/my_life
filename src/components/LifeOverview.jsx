@@ -92,27 +92,28 @@ export default function LifeOverview({ habitsData, gymData }) {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
 
       {/* Welcome Card */}
-      <div className="glass-card p-8 flex flex-col items-center justify-center text-center space-y-3">
-        <Activity size={40} className="text-violet-400" />
-        <h2 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400">
+      <div className="glass-card p-5 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center space-y-2 sm:space-y-3">
+        <Activity size={32} className="text-violet-400 sm:w-10 sm:h-10" />
+        <h2 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400">
           {isAr ? 'مرحباً بك' : 'Welcome'}
         </h2>
-        <p className="text-white/40 text-sm max-w-md">
+        <p className="text-white/40 text-xs sm:text-sm max-w-md px-1">
           {isAr ? 'أضف الأقسام التي تريدها من الأسفل لتخصيص صفحتك الرئيسية' : 'Add widgets below to customize your home page'}
         </p>
       </div>
 
       {/* Widget Manager Toggle */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-white/50 uppercase tracking-widest">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs sm:text-sm font-bold text-white/50 uppercase tracking-widest truncate">
           {isAr ? 'الأقسام' : 'Widgets'} ({widgets.filter(w => w.visible).length})
         </span>
         <button
+          type="button"
           onClick={() => setShowManager(!showManager)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all"
+          className="touch-target flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white/40 hover:text-white/70 transition-all min-h-[44px]"
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <LayoutGrid size={14} />
@@ -122,7 +123,7 @@ export default function LifeOverview({ habitsData, gymData }) {
 
       {/* Widget Manager Panel */}
       {showManager && (
-        <div className="glass-card p-5 space-y-4 animate-fade-in">
+        <div className="glass-card p-4 sm:p-5 space-y-4 animate-fade-in">
           {/* Existing widgets */}
           {widgets.length > 0 && (
             <div className="space-y-2">
@@ -136,17 +137,17 @@ export default function LifeOverview({ habitsData, gymData }) {
                     <span className={`flex-1 text-sm font-bold ${w.visible ? 'text-white/70' : 'text-white/30'}`}>
                       {isAr ? meta?.labelAr : meta?.label}
                     </span>
-                    <button onClick={() => toggleWidget(idx)} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+                    <button type="button" onClick={() => toggleWidget(idx)} className="touch-target p-2 rounded-lg hover:bg-white/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
                       {w.visible ? <Eye size={14} className="text-emerald-400/60" /> : <EyeOff size={14} className="text-white/20" />}
                     </button>
-                    <button onClick={() => removeWidget(idx)} className="p-1.5 rounded-lg hover:bg-red-500/10 transition-colors">
+                    <button type="button" onClick={() => removeWidget(idx)} className="touch-target p-2 rounded-lg hover:bg-red-500/10 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
                       <X size={14} className="text-red-400/40" />
                     </button>
                     <div className="flex flex-col gap-0.5">
-                      <button onClick={() => moveWidget(idx, -1)} disabled={idx === 0} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                      <button type="button" onClick={() => moveWidget(idx, -1)} disabled={idx === 0} className="touch-target p-2 rounded hover:bg-white/10 disabled:opacity-20 min-h-[36px] flex items-center justify-center">
                         <ChevronUp size={12} className="text-white/40" />
                       </button>
-                      <button onClick={() => moveWidget(idx, 1)} disabled={idx === widgets.length - 1} className="p-0.5 rounded hover:bg-white/10 disabled:opacity-20">
+                      <button type="button" onClick={() => moveWidget(idx, 1)} disabled={idx === widgets.length - 1} className="touch-target p-2 rounded hover:bg-white/10 disabled:opacity-20 min-h-[36px] flex items-center justify-center">
                         <ChevronDown size={12} className="text-white/40" />
                       </button>
                     </div>
@@ -162,9 +163,10 @@ export default function LifeOverview({ habitsData, gymData }) {
               <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest">{isAr ? 'إضافة قسم' : 'Add Widget'}</label>
               {availableToAdd.map(([id, meta]) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => addWidget(id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-dashed border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left"
+                  className="touch-target w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-dashed border-white/10 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all text-left min-h-[48px]"
                 >
                   <Plus size={14} className="text-violet-400/60" />
                   <span className="text-sm font-semibold text-white/40">{isAr ? meta.labelAr : meta.label}</span>
@@ -185,11 +187,11 @@ export default function LifeOverview({ habitsData, gymData }) {
 
       {/* Empty state */}
       {widgets.filter(w => w.visible).length === 0 && !showManager && (
-        <div className="glass-card p-10 flex flex-col items-center justify-center text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.1)' }}>
-            <Plus size={28} className="text-violet-400" />
+        <div className="glass-card p-6 sm:p-10 flex flex-col items-center justify-center text-center space-y-3 sm:space-y-4">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.1)' }}>
+            <Plus size={24} className="text-violet-400 sm:w-7 sm:h-7" />
           </div>
-          <p className="text-white/30 text-sm">
+          <p className="text-white/30 text-xs sm:text-sm px-2">
             {isAr ? 'اضغط على "تعديل" لإضافة أقسام' : 'Click "Manage" to add widgets'}
           </p>
         </div>

@@ -118,7 +118,14 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 font-sans"
-      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+      style={{
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        paddingTop: 'max(1rem, var(--safe-top))',
+        paddingBottom: 'max(1rem, var(--safe-bottom))',
+        paddingLeft: 'max(1rem, var(--safe-left))',
+        paddingRight: 'max(1rem, var(--safe-right))',
+      }}
     >
       {/* Background orbs */}
       <div
@@ -130,7 +137,7 @@ export default function LoginPage() {
         style={{ background: 'radial-gradient(circle, #6366f1, transparent)' }}
       />
 
-      <div className="glass-card p-8 md:p-10 w-full max-w-md animate-slide-up relative z-10">
+      <div className="glass-card p-5 sm:p-6 md:p-8 w-full max-w-md mx-2 sm:mx-4 animate-slide-up relative z-10">
         {/* ── Logo ── */}
         <div className="flex flex-col items-center mb-8">
           <div
@@ -207,7 +214,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || googleLoading}
-            className="action-btn w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+            className="action-btn touch-target w-full py-3.5 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50 min-h-[48px]"
             style={{
               background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
               boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)',
@@ -238,7 +245,7 @@ export default function LoginPage() {
           type="button"
           onClick={handleGoogleLogin}
           disabled={loading || googleLoading}
-          className="w-full py-3.5 rounded-xl font-bold text-white/80 flex items-center justify-center gap-3 transition-all hover:bg-white/[0.08] disabled:opacity-50"
+          className="touch-target w-full py-3.5 rounded-xl font-bold text-white/80 flex items-center justify-center gap-3 transition-all hover:bg-white/[0.08] disabled:opacity-50 min-h-[48px]"
           style={{
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.1)',

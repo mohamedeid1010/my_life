@@ -177,12 +177,33 @@
   box-sizing: border-box;
 }
 
+/* ═══ Mobile: safe areas & layout ═══ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Touch-friendly tap targets (min 44px) */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 /* ========================= */
@@ -439,6 +460,8 @@ input[type="number"] {
 .heatmap-cell-v2 {
   width: 20px;
   height: 20px;
+  min-width: 20px;
+  min-height: 20px;
   border-radius: 5px;
   border: none;
   outline: none;
@@ -446,6 +469,20 @@ input[type="number"] {
     transform 0.15s ease,
     box-shadow 0.15s ease,
     filter 0.15s ease;
+}
+
+@media (max-width: 480px) {
+  .heatmap-cell-v2 {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    border-radius: 4px;
+  }
+  .heatmap-day-label-row {
+    height: 16px;
+    font-size: 10px;
+  }
 }
 
 .heatmap-cell-v2:hover {

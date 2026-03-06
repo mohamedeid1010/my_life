@@ -37,25 +37,26 @@ export default function DailyActionPanel({ stats, onMarkComplete }) {
   };
 
   return (
-    <div className="glass-card p-6 flex flex-col items-center text-center animate-slide-up" style={{ animationDelay: '0.05s' }}>
+    <div className="glass-card p-4 sm:p-6 flex flex-col items-center text-center animate-slide-up" style={{ animationDelay: '0.05s' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6 self-start w-full">
+      <div className="flex items-center gap-3 mb-4 sm:mb-6 self-start w-full">
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
           style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.2))' }}
         >
           <Sparkles size={20} className="text-emerald-400" />
         </div>
-        <div className="text-left">
-          <h3 className="text-base font-bold text-white/90">Daily Action</h3>
-          <p className="text-xs text-white/30 font-medium">Today's commitment</p>
+        <div className="text-left min-w-0">
+          <h3 className="text-sm sm:text-base font-bold text-white/90">Daily Action</h3>
+          <p className="text-[10px] sm:text-xs text-white/30 font-medium">Today's commitment</p>
         </div>
       </div>
 
       {/* Big Button */}
       <button
+        type="button"
         onClick={handleClick}
-        className={`action-btn w-full py-5 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 mb-5 transition-all duration-300 ${
+        className={`action-btn touch-target w-full py-4 sm:py-5 rounded-2xl font-bold text-base sm:text-lg flex items-center justify-center gap-3 mb-4 sm:mb-5 transition-all duration-300 min-h-[52px] ${
           stats.todayCompleted
             ? 'bg-emerald-500/20 border-2 border-emerald-500/40 text-emerald-400 cursor-default'
             : 'border-2 border-violet-500/30 text-white hover:border-violet-400/60'

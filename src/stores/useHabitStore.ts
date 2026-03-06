@@ -417,32 +417,18 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
 
     set({ loaded: false });
 
+    // #region agent log
+    fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:initSync',message:'Habits initSync called',data:{uid},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+
     const habitsRef = collection(db, `users/${uid}/habits`);
     const q = query(habitsRef); // Could add where("isHidden", "==", false) here if we never need to show hidden habits
 
-    // 1. Force a server fetch first to bypass stubborn IndexedDB tab persistence
-    getDocsFromServer(q).then(async (snapshot) => {
-      const habitsData: HabitRaw[] = [];
-      const promises = snapshot.docs.map(async (habitDoc) => {
-        const habit = habitDoc.data() as HabitRaw;
-        habit.id = habitDoc.id;
-        const logsRef = collection(db, `users/${uid}/habits/${habitDoc.id}/logs`);
-        const logsSnapshot = await getDocsFromServer(logsRef).catch(() => getDocs(logsRef));
-        const history: Record<string, HabitEntry> = {};
-        logsSnapshot.forEach(logDoc => { history[logDoc.id] = logDoc.data() as HabitEntry; });
-        habit.history = history;
-        habitsData.push(habit);
-      });
-      await Promise.all(promises);
-      set({ habits: habitsData, loaded: true });
-    }).catch(err => {
-      console.warn("[HabitStore] Server pull failed, falling back to cache.", err);
-    });
-
-    // 2. Attach real-time listener to habits
+    // Attach real-time listener to habits
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // By default, onSnapshot uses whichever is available (cache/server)
-      // but since we forced a server pull above, this is now in sync.
+      // #region agent log
+      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_habits',message:'Habits snapshot',data:{docsCount:snapshot.docs.length},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       const habitsData: HabitRaw[] = [];
 
       const promises = snapshot.docs.map(async (habitDoc) => {
@@ -464,6 +450,9 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       await Promise.all(promises);
       set({ habits: habitsData, loaded: true });
     }, (error) => {
+      // #region agent log
+      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_error',message:'Habits onSnapshot error',data:{err:String(error?.message||error)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       console.error("[HabitStore] Real-time sync error:", error);
       set({ loaded: true });
     });

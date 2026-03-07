@@ -1,16 +1,98 @@
-import React from 'react';
+import React, { useState } from 'react';
 import HabitCard from './HabitCard';
-import { Plus } from 'lucide-react';
+import { Plus, GripVertical } from 'lucide-react';
 import usePreferences from '../../hooks/usePreferences';
 import { t } from '../../config/translations';
+import { useHabitStore } from '../../stores/useHabitStore';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  TouchSensor,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Wrapper for individual sortable item
+function SortableHabitCard(props) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.habit.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 'auto',
+    opacity: isDragging ? 0.8 : 1,
+    scale: isDragging ? 1.05 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative touch-none">
+      <HabitCard 
+        habit={props.habit}
+        onLogEntry={props.onLogEntry}
+        onExpandDetails={props.onExpandDetails}
+        dragHandleProps={{...attributes, ...listeners}}
+        isReorderMode={props.isReorderMode}
+      />
+    </div>
+  );
+}
 
 export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, onOpenCreateModal }) {
+  const [isReorderMode, setIsReorderMode] = useState(false);
   const { language } = usePreferences();
   const L = language;
+  const reorderHabits = useHabitStore((s) => s.reorderHabits);
+  const userStr = localStorage.getItem('herizon_auth');
+  const user = userStr ? JSON.parse(userStr) : null;
   // Calculate today's overall progress
   const total = habits.length;
   const completed = habits.filter(h => h.stats.todayEntry?.status === 'completed').length;
   const progressPercent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  // Setup DnD Sensors (supports mouse, touch, keyboard)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement to start drag (prevents accidental drags on click)
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 0, // Instant drag on touch devices
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && user?.uid) {
+      const oldIndex = habits.findIndex((h) => h.id === active.id);
+      const newIndex = habits.findIndex((h) => h.id === over.id);
+      const newOrder = arrayMove(habits, oldIndex, newIndex);
+      reorderHabits(user.uid, newOrder.map(h => h.id));
+    }
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -59,40 +141,71 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
 
           <div className="w-px h-10 bg-white/10 hidden md:block" />
 
-          {/* Create Button */}
-          <button
-            type="button"
-            onClick={onOpenCreateModal}
-            className="touch-target group relative px-4 py-3 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-lg overflow-hidden flex items-center gap-2 flex-grow md:flex-grow-0 justify-center min-h-[48px]"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Plus size={18} className="text-violet-400 group-hover:scale-125 transition-transform shrink-0" />
-            <span className="text-sm font-bold text-white relative z-10 w-max">{t('habits_new_habit', L)}</span>
-          </button>
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            {/* Reorder Button */}
+            <button
+              type="button"
+              onClick={() => setIsReorderMode(!isReorderMode)}
+              className={`touch-target relative p-2 transition-all flex items-center justify-center shrink-0 rounded-full ${
+                isReorderMode 
+                ? 'text-fuchsia-400 drop-shadow-[0_0_8px_rgba(217,70,239,0.5)]' 
+                : 'text-white/40 hover:text-white/80'
+              }`}
+              title={t('habits_reorder', L) || 'Reorder'}
+            >
+              <GripVertical size={24} className={isReorderMode ? 'animate-pulse' : ''} />
+            </button>
+
+            {/* Create Button */}
+            <button
+              type="button"
+              onClick={onOpenCreateModal}
+              className="touch-target group relative px-4 py-3 sm:py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all shadow-lg overflow-hidden flex items-center gap-2 flex-grow md:flex-grow-0 justify-center min-h-[48px]"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Plus size={18} className="text-violet-400 group-hover:scale-125 transition-transform shrink-0" />
+              <span className="text-sm font-bold text-white relative z-10 w-max hidden sm:inline">{t('habits_new_habit', L)}</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Habit List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {habits.length === 0 ? (
-          <div className="col-span-1 md:col-span-2 p-12 glass-card flex flex-col items-center justify-center text-center opacity-70">
+      {/* We use grid, but rectSortingStrategy works best here. */}
+      {habits.length === 0 ? (
+        <div className="grid grid-cols-1 gap-4">
+          <div className="col-span-1 p-12 glass-card flex flex-col items-center justify-center text-center opacity-70">
             <span className="text-6xl mb-4 grayscale opacity-50">🌱</span>
             <p className="text-lg font-bold text-white/80">Your journey starts here.</p>
             <p className="text-sm text-white/40 mt-2 max-w-sm">
               Create your first habit to begin building unstoppable momentum.
             </p>
           </div>
-        ) : (
-          habits.map(habit => (
-            <HabitCard 
-              key={habit.id}
-              habit={habit}
-              onLogEntry={onLogEntry}
-              onExpandDetails={onExpandDetails}
-            />
-          ))
-        )}
-      </div>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SortableContext
+              items={habits.map(h => h.id)}
+              strategy={rectSortingStrategy}
+            >
+              {habits.map(habit => (
+                <SortableHabitCard 
+                  key={habit.id}
+                  habit={habit}
+                  onLogEntry={onLogEntry}
+                  onExpandDetails={onExpandDetails}
+                  isReorderMode={isReorderMode}
+                />
+              ))}
+            </SortableContext>
+          </div>
+        </DndContext>
+      )}
     </div>
   );
 }

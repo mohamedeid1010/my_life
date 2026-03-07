@@ -33,7 +33,7 @@ function CirclePct({ pct }) {
   );
 }
 
-export default function MonthlyHabitsTable({ habits }) {
+export default function MonthlyHabitsTable({ habits, onExpandDetails }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
 
   // Build the list of all months from the earliest start date to today
@@ -93,7 +93,11 @@ export default function MonthlyHabitsTable({ habits }) {
               <th className="p-3 font-bold text-left sticky left-0 bg-[color:inherit] z-10 min-w-[100px]"># Month</th>
               <th className="p-3 font-bold text-center min-w-[100px]"># Score</th>
               {habits.map(h => (
-                <th key={h.id} className="p-3 font-bold text-center min-w-[90px] whitespace-nowrap">
+                <th 
+                  key={h.id} 
+                  className="p-3 font-bold text-center min-w-[90px] whitespace-nowrap cursor-pointer hover:text-violet-400 transition-colors"
+                  onClick={() => onExpandDetails && onExpandDetails(h)}
+                >
                   <span className="mr-1">{h.icon}</span>{h.name}
                 </th>
               ))}

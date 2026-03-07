@@ -104,11 +104,11 @@ export default function HabitsTracker({ habitsData }) {
           />
         );
       case 'weekly_view':
-        return <WeeklyHabitsTracker habits={activeHabits} onLogEntry={logHabitEntry} />;
+        return <WeeklyHabitsTracker habits={activeHabits} onLogEntry={logHabitEntry} onExpandDetails={(habit) => setSelectedHabit(habit)} />;
       case 'unified_grid':
-        return <UnifiedHabitsGrid habits={activeHabits} onLogEntry={logHabitEntry} />;
+        return <UnifiedHabitsGrid habits={activeHabits} onLogEntry={logHabitEntry} onExpandDetails={(habit) => setSelectedHabit(habit)} />;
       case 'monthly_view':
-        return <MonthlyHabitsTable habits={activeHabits} />;
+        return <MonthlyHabitsTable habits={activeHabits} onExpandDetails={(habit) => setSelectedHabit(habit)} />;
       case 'analytics':
         return <HabitsAnalyticsDashboard analytics={analytics} habits={activeHabits} />;
       default:
@@ -117,7 +117,7 @@ export default function HabitsTracker({ habitsData }) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in relative z-0">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in relative">
       {/* Section Manager Toggle */}
       <div className="flex justify-end">
         <button

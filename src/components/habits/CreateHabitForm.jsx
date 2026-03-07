@@ -387,7 +387,7 @@ export default function CreateHabitForm({ onClose, onSave }) {
                     {sug.icon}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-white font-bold text-base mb-1">
+                    <span className="text-white font-bold text-base mb-2">
                       {isAr ? sug.ar : sug.en}
                     </span>
                     <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">

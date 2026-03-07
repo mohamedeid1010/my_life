@@ -1,6 +1,65 @@
 import React, { useMemo } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
 
+function HabitRow({ habit, weekDays, pct, weekCompleted, weekPossible, onLogEntry, onExpandDetails }) {
+  return (
+    <tr className="hover:bg-white/[0.02] transition-colors relative">
+      <td 
+        className="p-2 cursor-pointer"
+        onClick={() => onExpandDetails && onExpandDetails(habit)}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{habit.icon}</span>
+          <span className="font-bold text-white/80 truncate max-w-[100px] text-xs">{habit.name}</span>
+        </div>
+      </td>
+      {weekDays.map(day => {
+        const entry = habit.history?.[day.dateStr];
+        const status = entry?.status || 'empty';
+        const isCompleted = status === 'completed';
+        const isMissed = status === 'missed';
+        const isSkipped = status === 'skipped';
+
+        let cellClass = 'bg-white/5';
+        if (day.isFuture) cellClass = 'opacity-20 pointer-events-none';
+        else if (isCompleted) cellClass = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]';
+        else if (isMissed) cellClass = 'bg-red-500/30';
+        else if (isSkipped) cellClass = 'bg-yellow-500/30';
+
+        return (
+          <td key={day.dateStr} className="p-2 text-center">
+            <button
+              onClick={() => {
+                if (!onLogEntry || day.isFuture) return;
+                let nextStatus = 'completed';
+                if (isCompleted) nextStatus = 'missed';
+                else if (isMissed) nextStatus = 'skipped';
+                else if (isSkipped) nextStatus = 'pending';
+                onLogEntry(habit.id, day.dateStr, { status: nextStatus, timestamp: new Date().toISOString() });
+              }}
+              title={`${habit.name} — ${day.dateStr}: ${status}`}
+              className={`w-8 h-8 mx-auto rounded-full transition-all ${!day.isFuture ? 'hover:scale-110 hover:ring-2 hover:ring-white/40 cursor-pointer' : ''} flex items-center justify-center ${cellClass} ${day.isToday ? 'ring-2 ring-cyan-400/40' : ''}`}
+            >
+              {isCompleted && <span className="text-white text-xs font-black">✓</span>}
+              {isMissed && <span className="text-red-300 text-xs">✕</span>}
+              {isSkipped && <span className="text-yellow-300 text-xs font-bold">G</span>}
+              {!isCompleted && !isMissed && !isSkipped && !day.isFuture && (
+                <span className="text-white/15 text-[10px] font-bold">{day.dayNum}</span>
+              )}
+            </button>
+          </td>
+        );
+      })}
+      <td className="p-2 text-center">
+        <div className="flex flex-col items-center gap-0.5">
+          <span className={`font-black text-sm ${pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>{weekCompleted}/{weekPossible}</span>
+          <span className="text-[10px] text-white/30">{pct}%</span>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 const DAY_LABELS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
 // Week 1 starts on January 3 (Saturday) as the user's system anchor
@@ -13,7 +72,7 @@ function getWeekNumber(today) {
   return Math.max(1, Math.floor(diff / 7) + 1);
 }
 
-export default function WeeklyHabitsTracker({ habits, onLogEntry }) {
+export default function WeeklyHabitsTracker({ habits, onLogEntry, onExpandDetails }) {
   const today = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
 
   // Build this week's days (Sat → Fri)
@@ -54,6 +113,8 @@ export default function WeeklyHabitsTracker({ habits, onLogEntry }) {
     });
     return { completed, possible, pct: possible > 0 ? Math.round((completed / possible) * 100) : 0 };
   }, [habits, weekDays]);
+
+
 
   if (!habits || habits.length === 0) return null;
 
@@ -103,67 +164,26 @@ export default function WeeklyHabitsTracker({ habits, onLogEntry }) {
               <th className="p-2 text-center text-[10px] text-white/30 uppercase tracking-widest font-bold">Score</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/5">
-            {habits.map(habit => {
-              const weekCompleted = weekDays.filter(d => !d.isFuture && habit.history?.[d.dateStr]?.status === 'completed').length;
-              const weekPossible = weekDays.filter(d => !d.isFuture).length;
-              const pct = weekPossible > 0 ? Math.round((weekCompleted / weekPossible) * 100) : 0;
+              <tbody className="divide-y divide-white/5 relative">
+                {habits.map(habit => {
+                  const weekCompleted = weekDays.filter(d => !d.isFuture && habit.history?.[d.dateStr]?.status === 'completed').length;
+                  const weekPossible = weekDays.filter(d => !d.isFuture).length;
+                  const pct = weekPossible > 0 ? Math.round((weekCompleted / weekPossible) * 100) : 0;
 
-              return (
-                <tr key={habit.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="p-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{habit.icon}</span>
-                      <span className="font-bold text-white/80 truncate max-w-[100px] text-xs">{habit.name}</span>
-                    </div>
-                  </td>
-                  {weekDays.map(day => {
-                    const entry = habit.history?.[day.dateStr];
-                    const status = entry?.status || 'empty';
-                    const isCompleted = status === 'completed';
-                    const isMissed = status === 'missed';
-                    const isSkipped = status === 'skipped';
-
-                    let cellClass = 'bg-white/5';
-                    if (day.isFuture) cellClass = 'opacity-20 pointer-events-none';
-                    else if (isCompleted) cellClass = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]';
-                    else if (isMissed) cellClass = 'bg-red-500/30';
-                    else if (isSkipped) cellClass = 'bg-yellow-500/30';
-
-                    return (
-                      <td key={day.dateStr} className="p-2 text-center">
-                        <button
-                          onClick={() => {
-                            if (!onLogEntry || day.isFuture) return;
-                            let nextStatus = 'completed';
-                            if (isCompleted) nextStatus = 'missed';
-                            else if (isMissed) nextStatus = 'skipped';
-                            else if (isSkipped) nextStatus = 'pending';
-                            onLogEntry(habit.id, day.dateStr, { status: nextStatus, timestamp: new Date().toISOString() });
-                          }}
-                          title={`${habit.name} — ${day.dateStr}: ${status}`}
-                          className={`w-8 h-8 mx-auto rounded-full transition-all ${!day.isFuture ? 'hover:scale-110 hover:ring-2 hover:ring-white/40 cursor-pointer' : ''} flex items-center justify-center ${cellClass} ${day.isToday ? 'ring-2 ring-cyan-400/40' : ''}`}
-                        >
-                          {isCompleted && <span className="text-white text-xs font-black">✓</span>}
-                          {isMissed && <span className="text-red-300 text-xs">✕</span>}
-                          {isSkipped && <span className="text-yellow-300 text-xs font-bold">G</span>}
-                          {!isCompleted && !isMissed && !isSkipped && !day.isFuture && (
-                            <span className="text-white/15 text-[10px] font-bold">{day.dayNum}</span>
-                          )}
-                        </button>
-                      </td>
-                    );
-                  })}
-                  <td className="p-2 text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className={`font-black text-sm ${pct >= 80 ? 'text-emerald-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>{weekCompleted}/{weekPossible}</span>
-                      <span className="text-[10px] text-white/30">{pct}%</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+                  return (
+                    <HabitRow 
+                      key={habit.id}
+                      habit={habit}
+                      weekDays={weekDays}
+                      pct={pct}
+                      weekCompleted={weekCompleted}
+                      weekPossible={weekPossible}
+                      onLogEntry={onLogEntry}
+                      onExpandDetails={onExpandDetails}
+                    />
+                  );
+                })}
+              </tbody>
         </table>
       </div>
     </div>

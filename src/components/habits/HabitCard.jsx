@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
-import { Check, Flame, Star, Battery, Smile, Activity } from 'lucide-react';
+import { Check, Flame, Star, Battery, Smile, Activity, GripVertical } from 'lucide-react';
 import usePreferences from '../../hooks/usePreferences';
 import { t } from '../../config/translations';
 
-export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
+export default function HabitCard({ habit, onLogEntry, onExpandDetails, dragHandleProps, isReorderMode }) {
   const { language } = usePreferences();
   const L = language;
   const { id, name, icon, targetType, targetValue, unit, graceDaysAllowance, stats } = habit;
@@ -58,6 +58,17 @@ export default function HabitCard({ habit, onLogEntry, onExpandDetails }) {
       <div className="flex items-center justify-between relative z-10 w-full">
         {/* Left Side: Icon & Info */}
         <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+          {/* Drag Handle shown only in reorder mode */}
+          {isReorderMode && dragHandleProps && (
+            <div 
+              {...dragHandleProps}
+              className="cursor-grab active:cursor-grabbing p-2 -ml-2 text-white/20 hover:text-white/60 touch-none shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical size={20} />
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleToggle}

@@ -73,6 +73,11 @@ export interface HabitRaw {
   color?: string;
 
   /**
+   * Order for sorting.
+   */
+  order?: number;
+
+  /**
    * Daily history keyed by YYYY-MM-DD.
    */
   history: Record<string, HabitEntry>;

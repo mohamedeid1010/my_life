@@ -151,7 +151,7 @@ export default function HabitDetailModal({ habit, onClose, onUpdateHabit, onDele
   }, [habit.history]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
       <div className="glass-card w-full max-w-2xl flex flex-col overflow-hidden shadow-2xl relative max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5 shrink-0">

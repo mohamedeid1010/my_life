@@ -39,7 +39,7 @@ firebase deploy --only hosting
 ## أمر واحد يعمل كل حاجة
 
 ```bash
-git add -A && git commit -m "habits suggestions" && git push && npm run build && firebase deploy --only hosting
+git add -A && git commit -m "update habits" && git push && npm run build && firebase deploy --only hosting
 ```
 
 ---

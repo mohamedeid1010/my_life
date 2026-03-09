@@ -34,17 +34,23 @@ const mockHistoricalData = [
 
 export default function WeeklyPlanner() {
   const user = useAuthStore((s) => s.user);
-  const { data, loading, saving, initialize, updateData, addMasterTask, removeMasterTask, updateMasterTask, updateDayTask, addDayTask } = useWeeklyPlannerStore();
+  const { 
+    data, loading, saving, loaded,
+    initialize, cleanup,
+    updateData, addMasterTask, removeMasterTask, updateMasterTask, 
+    updateDayTask, addDayTask 
+  } = useWeeklyPlannerStore();
 
   const [activeView, setActiveView] = useState('planner');
   const [showSettings, setShowSettings] = useState(false);
 
-  // Initialize store on mount
+  // Initialize store on mount and cleanup on unmount
   useEffect(() => {
     if (user?.uid) {
       initialize(user.uid);
     }
-  }, [user?.uid, initialize]);
+    return () => cleanup();
+  }, [user?.uid, initialize, cleanup]);
 
   // Use data from store
   const startDay = data?.startDay || 'sat';
@@ -99,15 +105,16 @@ export default function WeeklyPlanner() {
     };
   }, [today, startDay]);
 
-  // تجهيز الأيام للعرض بناءً على الترتيب الجديد
-  const sortedDays = weekData.sortedIds.map(id => days.find(d => d.id === id) || { id, name: id.charAt(0).toUpperCase() + id.slice(1), tasks: [] });
+  const sortedDays = useMemo(() => {
+    return weekData.sortedIds.map(id => days.find(d => d.id === id) || { id, name: id.charAt(0).toUpperCase() + id.slice(1), tasks: [] });
+  }, [weekData.sortedIds, days]);
 
   // تنسيق التواريخ بشكل احترافي
   const formatDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   const formatDayCardDate = (date) => date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   // === التحليلات المتقدمة (Analytics Logic) ===
-  const masterStats = React.useMemo(() => {
+  const masterStats = useMemo(() => {
     const stats = {};
     masterTasks.forEach(t => { stats[t.id] = { total: 0, done: 0 }; });
     days.forEach(day => {
@@ -121,7 +128,7 @@ export default function WeeklyPlanner() {
     return stats;
   }, [masterTasks, days]);
 
-  const globalStats = React.useMemo(() => {
+  const globalStats = useMemo(() => {
     let total = 0, completed = 0;
     days.forEach(day => {
       day.tasks.forEach(task => {
@@ -138,7 +145,7 @@ export default function WeeklyPlanner() {
     return { total, completed, percentage };
   }, [masterTasks, days, masterStats]);
 
-  const categoryAnalytics = React.useMemo(() => {
+  const categoryAnalytics = useMemo(() => {
     const catData = {};
     TASK_CATEGORIES.forEach(c => { catData[c.id] = { label: c.label, color: c.color, total: 0, done: 0 }; });
     days.forEach(day => {
@@ -163,12 +170,12 @@ export default function WeeklyPlanner() {
     })).filter(c => c.total > 0);
   }, [days, masterTasks, masterStats]);
 
-  const weakestCategory = React.useMemo(() => {
+  const weakestCategory = useMemo(() => {
     if (categoryAnalytics.length === 0) return null;
     return categoryAnalytics.reduce((prev, curr) => (prev.percent < curr.percent ? prev : curr));
   }, [categoryAnalytics]);
 
-  const bestDay = React.useMemo(() => {
+  const bestDay = useMemo(() => {
     let maxDone = -1;
     let bDay = null;
     days.forEach(d => {
@@ -200,7 +207,11 @@ export default function WeeklyPlanner() {
     if (!task) return;
 
     if (!task.masterId) {
-      const newMasterId = crypto.randomUUID();
+      // Use a consistent ID generation (fallback if randomUUID is missing)
+      const newMasterId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+        ? crypto.randomUUID() 
+        : (Math.random().toString(36).substring(2, 11) + Date.now().toString(36));
+      
       updateDayTask(dayId, taskId, { masterId: newMasterId });
       addMasterTask({ id: newMasterId, text: text, categoryId: 'other' });
     } else {
@@ -226,9 +237,15 @@ export default function WeeklyPlanner() {
     let textToMove = draggedItem.text;
     const newDays = [...data.days];
     const targetDay = newDays.find(d => d.id === targetDayId);
+    if (!targetDay) return;
+
     let targetTask = targetDay.tasks.find(t => t.text.trim() === '');
     if (!targetTask) {
-      targetTask = { id: crypto.randomUUID(), masterId: null, text: '', done: false };
+      const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) 
+        ? crypto.randomUUID() 
+        : (Math.random().toString(36).substring(2, 11) + Date.now().toString(36));
+
+      targetTask = { id: newId, masterId: null, text: '', done: false };
       targetDay.tasks.push(targetTask);
     }
 
@@ -261,7 +278,8 @@ export default function WeeklyPlanner() {
         updateMasterTask(draggedItem.masterId, { categoryId: targetCategoryId });
       }
       const newDays = [...data.days];
-      const sourceTask = newDays.find(d => d.id === draggedItem.dayId)?.tasks.find(t => t.id === draggedItem.id);
+      const sourceDay = newDays.find(d => d.id === draggedItem.dayId);
+      const sourceTask = sourceDay?.tasks.find(t => t.id === draggedItem.id);
       if (sourceTask) {
         sourceTask.text = '';
         sourceTask.done = false;
@@ -274,11 +292,12 @@ export default function WeeklyPlanner() {
 
   const activeCategories = TASK_CATEGORIES.filter(category => masterTasks.some(t => t.categoryId === category.id));
 
-  if (loading) {
+  if (loading && !loaded) {
     return (
       <div className="max-w-[1600px] mx-auto p-4 md:p-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-[var(--text-muted)]">Loading Weekly Planner...</div>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+           <div className="w-10 h-10 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin" />
+          <div className="text-[var(--text-muted)] font-medium">Synchronizing Weekly Planner...</div>
         </div>
       </div>
     );
@@ -320,7 +339,14 @@ export default function WeeklyPlanner() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Syncing Status Indicator */}
+          {saving && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">
+              <Activity size={12} /> Saving...
+            </div>
+          )}
+
           {/* View Switcher */}
           <div className="glass-card p-1 flex gap-1 rounded-xl">
             <button
@@ -369,7 +395,6 @@ export default function WeeklyPlanner() {
               </div>
             )}
           </div>
-
         </div>
       </div>
 
@@ -552,7 +577,7 @@ export default function WeeklyPlanner() {
                       const progressPercent = isScheduled ? (stat.done / stat.total) * 100 : 0;
 
                       return (
-                        <div key={task.id} draggable onDragStart={(e) => setDraggedItem({ type: 'master', id: task.id, text: task.text, categoryId: task.categoryId })}
+                        <div key={task.id} draggable onDragStart={() => setDraggedItem({ type: 'master', id: task.id, text: task.text, categoryId: task.categoryId })}
                           className={`relative overflow-hidden px-3 py-2 border rounded-lg flex items-center gap-2 cursor-grab active:cursor-grabbing transition-all ${isFullyDone ? 'border-[#10b981] bg-[#10b981]/10' : 'bg-[var(--bg-card)] border-[var(--border-glass)] hover:border-[var(--accent-primary)] hover:shadow-lg'}`}
                         >
                           {isScheduled && !isFullyDone && stat.done > 0 && ( <div className="absolute left-0 top-0 bottom-0 bg-[#10b981]/20 transition-all duration-500" style={{ width: `${progressPercent}%` }} /> )}

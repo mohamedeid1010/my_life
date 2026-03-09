@@ -145,13 +145,21 @@ function Dashboard({ user, logout }) {
   const [navConfig, setNavConfig] = useState(loadNavConfig);
   const { profile, theme, language } = usePreferences();
 
-  // Active tab: first visible page
+  // Active tab: load from localStorage or first visible page
   const visiblePages = navConfig.filter(p => p.visible);
-  const [activeTab, setActiveTab] = useState(() => visiblePages[0]?.id || 'overview');
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('herizon_active_tab');
+    return (saved && visiblePages.find(p => p.id === saved)) ? saved : (visiblePages[0]?.id || 'overview');
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  // Save active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('herizon_active_tab', activeTab);
+  }, [activeTab]);
 
   // Build visible nav items in the user's custom order
   const navItems = navConfig

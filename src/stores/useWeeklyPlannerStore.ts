@@ -25,10 +25,11 @@ interface WeeklyPlannerStore {
   data: WeeklyPlannerData | null;
   loading: boolean;
   saving: boolean;
+  userId: string | null;
 
   // Actions
   initialize: (userId: string) => void;
-  updateData: (updates: Partial<WeeklyPlannerData>) => void;
+  updateData: (updates: Partial<WeeklyPlannerData>) => Promise<void>;
   addMasterTask: (task: Omit<MasterTask, 'id'>) => void;
   removeMasterTask: (id: string) => void;
   updateMasterTask: (id: string, updates: Partial<MasterTask>) => void;
@@ -70,9 +71,10 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
   data: null,
   loading: false,
   saving: false,
+  userId: null,
 
   initialize: (userId: string) => {
-    set({ loading: true });
+    set({ loading: true, userId });
 
     const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
     const unsubscribe = onSnapshot(docRef, (snapshot) => {
@@ -91,20 +93,32 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
     return unsubscribe;
   },
 
-  updateData: (updates: Partial<WeeklyPlannerData>) => {
-    const { data } = get();
-    if (!data) return;
+  updateData: async (updates: Partial<WeeklyPlannerData>) => {
+    const { data, userId } = get();
+    if (!data || !userId) return;
 
     const newData = { ...data, ...updates };
     set({ data: newData, saving: true });
 
-    // Queue for sync
-    useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', {
-      path: `users/${data.weekId}/weekly-planner/current`,
-      data: newData,
-    });
+    const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
+    const { isOnline } = useSyncStore.getState();
 
-    set({ saving: false });
+    if (isOnline) {
+      try {
+        await setDoc(docRef, newData, { merge: true });
+        set({ saving: false });
+      } catch (err) {
+        console.error("Failed to update weekly planner", err);
+        set({ saving: false });
+      }
+    } else {
+      // Queue for sync
+      useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', {
+        path: `users/${userId}/weekly-planner/current`,
+        data: newData,
+      });
+      set({ saving: false });
+    }
   },
 
   addMasterTask: (task: Omit<MasterTask, 'id'>) => {

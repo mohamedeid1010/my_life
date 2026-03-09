@@ -110,9 +110,14 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
       } catch (err) {
         console.error("Failed to update weekly planner", err);
         set({ saving: false });
+        // Enqueue for later sync
+        useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', {
+          path: `users/${userId}/weekly-planner/current`,
+          data: newData,
+        });
       }
     } else {
-      // Queue for sync
+      // Enqueue for sync when online
       useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', {
         path: `users/${userId}/weekly-planner/current`,
         data: newData,

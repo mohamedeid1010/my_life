@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Plus, X, ChevronUp, ChevronDown, Eye, EyeOff, LayoutGrid } from 'lucide-react';
 import usePreferences from '../hooks/usePreferences';
-import { t } from '../config/translations';
 
 // Gym widgets
 import HeatmapCalendar from './HeatmapCalendar';
@@ -99,17 +98,17 @@ export default function LifeOverview({ habitsData, gymData }) {
       <div className="glass-card p-5 sm:p-6 md:p-8 flex flex-col items-center justify-center text-center space-y-2 sm:space-y-3">
         <Activity size={32} className="text-violet-400 sm:w-10 sm:h-10" />
         <h2 className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-violet-400 to-indigo-400">
-          {t('home_welcome_title', L)}
+          {isAr ? 'مرحباً بك' : 'Welcome'}
         </h2>
         <p className="text-white/40 text-xs sm:text-sm max-w-md px-1">
-          {t('home_welcome_desc', L)}
+          {isAr ? 'أضف الأقسام التي تريدها من الأسفل لتخصيص صفحتك الرئيسية' : 'Add widgets below to customize your home page'}
         </p>
       </div>
 
       {/* Widget Manager Toggle */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs sm:text-sm font-bold text-white/50 uppercase tracking-widest truncate">
-          {t('home_widgets_label', L)} ({widgets.filter(w => w.visible).length})
+          {isAr ? 'الأقسام' : 'Widgets'} ({widgets.filter(w => w.visible).length})
         </span>
         <button
           type="button"
@@ -118,7 +117,7 @@ export default function LifeOverview({ habitsData, gymData }) {
           style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           <LayoutGrid size={14} />
-          {t('home_manage', L)}
+          {isAr ? 'تعديل' : 'Manage'}
         </button>
       </div>
 
@@ -128,7 +127,7 @@ export default function LifeOverview({ habitsData, gymData }) {
           {/* Existing widgets */}
           {widgets.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest">{t('home_current_widgets', L)}</label>
+              <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest">{isAr ? 'الأقسام الحالية' : 'Current Widgets'}</label>
               {widgets.map((w, idx) => {
                 const meta = WIDGET_CATALOG[w.id];
                 return (
@@ -161,7 +160,7 @@ export default function LifeOverview({ habitsData, gymData }) {
           {/* Add new widgets */}
           {availableToAdd.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest">{t('home_add_widget', L)}</label>
+              <label className="text-[10px] uppercase font-bold text-white/30 tracking-widest">{isAr ? 'إضافة قسم' : 'Add Widget'}</label>
               {availableToAdd.map(([id, meta]) => (
                 <button
                   type="button"
@@ -193,7 +192,7 @@ export default function LifeOverview({ habitsData, gymData }) {
             <Plus size={24} className="text-violet-400 sm:w-7 sm:h-7" />
           </div>
           <p className="text-white/30 text-xs sm:text-sm px-2">
-            {t('home_empty_widgets_hint', L)}
+            {isAr ? 'اضغط على "تعديل" لإضافة أقسام' : 'Click "Manage" to add widgets'}
           </p>
         </div>
       )}

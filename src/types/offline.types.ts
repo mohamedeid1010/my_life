@@ -15,7 +15,8 @@ export type OfflineActionType =
   | 'HABIT_ADD'
   | 'HABIT_UPDATE'
   | 'HABIT_DELETE'
-  | 'PREFERENCES_UPDATE';
+  | 'PREFERENCES_UPDATE'
+  | 'WEEKLY_PLANNER_UPDATE';
 
 /** A single pending action queued while offline */
 export interface PendingAction {

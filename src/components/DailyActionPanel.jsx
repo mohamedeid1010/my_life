@@ -1,14 +1,10 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, Clock, Sparkles } from 'lucide-react';
-import usePreferences from '../hooks/usePreferences';
-import { t } from '../config/translations';
 
 /**
  * Daily Action Panel — Mark today complete + countdown timer
  */
 export default function DailyActionPanel({ stats, onMarkComplete }) {
-  const { language } = usePreferences();
-  const L = language;
   const [timeLeft, setTimeLeft] = useState('');
   const [justCompleted, setJustCompleted] = useState(false);
 
@@ -51,8 +47,8 @@ export default function DailyActionPanel({ stats, onMarkComplete }) {
           <Sparkles size={20} className="text-emerald-400" />
         </div>
         <div className="text-left min-w-0">
-          <h3 className="text-sm sm:text-base font-bold text-white/90">{t('daily_action_title', L)}</h3>
-          <p className="text-[10px] sm:text-xs text-white/30 font-medium">{t('daily_action_subtitle', L)}</p>
+          <h3 className="text-sm sm:text-base font-bold text-white/90">Daily Action</h3>
+          <p className="text-[10px] sm:text-xs text-white/30 font-medium">Today's commitment</p>
         </div>
       </div>
 
@@ -75,12 +71,12 @@ export default function DailyActionPanel({ stats, onMarkComplete }) {
         {stats.todayCompleted ? (
           <>
             <CheckCircle2 size={24} />
-            {t('daily_today_completed', L)}
+            Today Completed ✨
           </>
         ) : (
           <>
             <CheckCircle2 size={24} />
-            {t('daily_mark_today_complete', L)}
+            Mark Today Complete
           </>
         )}
       </button>
@@ -88,7 +84,7 @@ export default function DailyActionPanel({ stats, onMarkComplete }) {
       {/* Celebration flash */}
       {justCompleted && (
         <div className="text-emerald-400 text-sm font-bold animate-pop mb-3">
-          🎉 {t('daily_celebration', L)}
+          🎉 Amazing! Keep the streak alive!
         </div>
       )}
 

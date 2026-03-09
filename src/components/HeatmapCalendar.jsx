@@ -16,13 +16,15 @@ const STATUS_COLORS = {
   PENDING:     'rgba(255,255,255,0.06)',
 };
 
-const STATUS_LABEL_KEYS = {
-  WORKOUT: 'heatmap_status_workout',
-  LOCKED_REST: 'heatmap_status_locked_rest',
-  AUTO_REST: 'heatmap_status_auto_rest',
-  MISSED: 'heatmap_status_missed',
-  PENDING: 'heatmap_status_pending',
+const STATUS_LABELS = {
+  WORKOUT:     'Workout Done ✅',
+  LOCKED_REST: 'Rest (Goal Met) 🏆',
+  AUTO_REST:   'Rest Day 😴',
+  MISSED:      'Missed ❌',
+  PENDING:     'Pending',
 };
+
+const DAY_LABELS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
 
 /* ---------- Helpers ---------- */
 function formatDate(date) {
@@ -82,7 +84,7 @@ export default function HeatmapCalendar({
             {t('workout_activity', L)}
           </h2>
           <p className="text-[10px] sm:text-xs text-white/30 font-medium mt-1 hidden xs:block">
-            {t('heatmap_hint', L)}
+            Click any day to mark as done · Completed weeks glow with a 🏆
           </p>
         </div>
       </div>
@@ -160,9 +162,8 @@ export default function HeatmapCalendar({
                           disabled={isLocked}
                           onMouseEnter={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            const statusLabel = t(STATUS_LABEL_KEYS[dayObj.status] || 'heatmap_status_pending', L);
                             setTooltip({
-                              text: `${t('week', L)} ${week.week} · ${formatDate(dayObj.date)} — ${statusLabel}`,
+                              text: `Week ${week.week} · ${formatDate(dayObj.date)} — ${STATUS_LABELS[dayObj.status]}`,
                               x: rect.left + rect.width / 2,
                               y: rect.top - 8,
                             });
@@ -172,7 +173,7 @@ export default function HeatmapCalendar({
                             isLocked ? 'cursor-default' : 'cursor-pointer'
                           } ${isCurrent && !isTodayCell ? 'heatmap-current-week' : ''}`}
                           style={{ backgroundColor: color }}
-                          aria-label={`${formatDate(dayObj.date)}: ${t(STATUS_LABEL_KEYS[dayObj.status] || 'heatmap_status_pending', L)}`}
+                          aria-label={`${formatDate(dayObj.date)}: ${STATUS_LABELS[dayObj.status]}`}
                         />
                       );
                     })}
@@ -209,19 +210,19 @@ export default function HeatmapCalendar({
         <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-[11px] font-semibold text-white/30 flex-wrap">
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#eab308' }} />
-            {t('heatmap_legend_workout', L)}
+            Workout ✅
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#60a5fa' }} />
-            {t('heatmap_legend_break', L)}
+            {isAr ? 'راحة' : 'Break'}
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: '#0d9488' }} />
-            {t('heatmap_status_locked_rest', L)}
+            {isAr ? 'استراحة (الهدف متحقق)' : 'Rest (Goal Met)'}
           </span>
           <span className="flex items-center gap-1.5">
             <div className="w-[18px] h-[18px] rounded-[4px]" style={{ backgroundColor: 'rgba(239,68,68,0.30)' }} />
-            {t('heatmap_status_missed', L)}
+            {isAr ? 'فائت' : 'Missed'}
           </span>
           <span className="flex items-center gap-1.5">
             <Trophy size={13} className="text-amber-500" />

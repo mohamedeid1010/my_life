@@ -360,7 +360,6 @@ interface HabitStore {
   loaded: boolean;
   saving: boolean;
   unsubscribeFn: (() => void) | null;
-  syncCounter: number; 
 
   // ── Derived Selectors ──
   getHabitsWithStats: () => HabitWithStats[];
@@ -376,7 +375,7 @@ interface HabitStore {
   // ── Mutations ──
   addHabit: (uid: string, newHabit: Omit<HabitRaw, 'id' | 'history'>) => Promise<void>;
   updateHabit: (uid: string, id: string, updates: Partial<HabitRaw>) => Promise<void>;
-  reorderHabits: (uid: string, orderedHabitIds: string[]) => Promise<void>;
+  reorderHabits: (uid: string, habitIds: string[]) => Promise<void>;
   deleteHabit: (uid: string, id: string) => Promise<void>;
   logHabitEntry: (
     uid: string,
@@ -391,7 +390,6 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
   loaded: false,
   saving: false,
   unsubscribeFn: null,
-  syncCounter: 0,
 
   getHabitsWithStats: (): HabitWithStats[] => {
     const { habits } = get();
@@ -406,10 +404,11 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       .getHabitsWithStats()
       .filter((h) => !h.isHidden)
       .sort((a, b) => {
-        const orderA = a.order ?? 0;
-        const orderB = b.order ?? 0;
-        if (orderA !== orderB) return orderA - orderB;
-        return a.id.localeCompare(b.id); // Stable tie-breaker
+        const aOrder = a.order ?? Infinity;
+        const bOrder = b.order ?? Infinity;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        // Fallback to name for stable sort
+        return a.name.localeCompare(b.name);
       });
   },
 
@@ -424,15 +423,20 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       unsubscribeFn(); // Clean up existing listener
     }
 
-    set({ loaded: false, syncCounter: get().syncCounter + 1 });
-    const currentSyncId = get().syncCounter;
-    let rebuildCounter = 0; // Local to this sync session
+    set({ loaded: false });
+
+    // #region agent log
+    fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:initSync',message:'Habits initSync called',data:{uid},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     const habitsRef = collection(db, `users/${uid}/habits`);
-    const q = query(habitsRef); 
+    const q = query(habitsRef); // Could add where("isHidden", "==", false) here if we never need to show hidden habits
 
+    // Attach real-time listener to habits
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const rebuildId = ++rebuildCounter;
+      // #region agent log
+      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_habits',message:'Habits snapshot',data:{docsCount:snapshot.docs.length},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       const habitsData: HabitRaw[] = [];
 
       const promises = snapshot.docs.map(async (habitDoc) => {
@@ -452,12 +456,7 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       });
 
       await Promise.all(promises);
-      
-      // Protection: Only update if no newer sync session has started 
-      // AND this is the result of the LATEST snapshot within this session
-      if (get().unsubscribeFn === unsubscribe && get().syncCounter === currentSyncId && rebuildId === rebuildCounter) {
-        set({ habits: habitsData, loaded: true });
-      }
+      set({ habits: habitsData, loaded: true });
     }, (error) => {
       // #region agent log
       fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_error',message:'Habits onSnapshot error',data:{err:String(error?.message||error)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
@@ -485,13 +484,12 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     const habit: HabitRaw = {
       id: habitId,
       history: {},
-      order: get().habits.length, // Put at the end by default
       ...newHabit,
     };
     set((state) => ({ habits: [...state.habits, habit] }));
 
     const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
-    const payload = { ...habit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    const payload = { ...newHabit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
 
     if (isOnline) {
       try {
@@ -528,37 +526,41 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     }
   },
 
-  reorderHabits: async (uid: string, orderedHabitIds: string[]) => {
+  reorderHabits: async (uid: string, habitIds: string[]) => {
     const { isOnline } = useSyncStore.getState();
     
-    // Optistic update
-    set((state) => {
-      const newHabits = [...state.habits];
-      orderedHabitIds.forEach((id, index) => {
-        const hIndex = newHabits.findIndex(h => h.id === id);
-        if (hIndex !== -1) {
-          newHabits[hIndex] = { ...newHabits[hIndex], order: index };
-        }
-      });
-      return { habits: newHabits };
+    // Create order mapping
+    const orderUpdates: Record<string, number> = {};
+    habitIds.forEach((id, index) => {
+      orderUpdates[id] = index;
     });
 
+    // Optimistic update
+    set((state) => ({
+      habits: state.habits.map((h) => ({
+        ...h,
+        order: orderUpdates[h.id] ?? h.order,
+      })),
+    }));
+
+    // Batch update in Firestore
     if (isOnline) {
+      const batch = writeBatch(db);
+      habitIds.forEach((id, index) => {
+        const habitRef = doc(db, `users/${uid}/habits/${id}`);
+        batch.update(habitRef, { order: index, updatedAt: serverTimestamp() });
+      });
       try {
-        const batch = writeBatch(db);
-        orderedHabitIds.forEach((id, index) => {
-          const habitRef = doc(db, `users/${uid}/habits/${id}`);
-          batch.set(habitRef, { order: index, updatedAt: serverTimestamp() }, { merge: true });
-        });
         await batch.commit();
       } catch (err) {
         console.error("Failed to reorder habits", err);
       }
     } else {
-      orderedHabitIds.forEach((id, index) => {
+      // For offline, enqueue individual updates
+      habitIds.forEach((id, index) => {
         useSyncStore.getState().enqueueAction('HABIT_UPDATE', { 
           path: `users/${uid}/habits/${id}`, 
-          data: { order: index, updatedAt: new Date().toISOString() } 
+          data: { order: index, updatedAt: serverTimestamp() } 
         });
       });
     }

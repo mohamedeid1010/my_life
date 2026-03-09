@@ -1,71 +1,25 @@
 import React, { useState } from 'react';
-import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon, Search } from 'lucide-react';
+import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
-import usePreferences from '../../hooks/usePreferences';
-import { t } from '../../config/translations';
-import { HABIT_SUGGESTIONS } from '../../data/habitSuggestions';
 
 const CATEGORIES = [
-  { id: 'health', labelKey: 'habit_category_health', icon: <Heart size={16} /> },
-  { id: 'fitness', labelKey: 'habit_category_fitness', icon: <Dumbbell size={16} /> },
-  { id: 'productivity', labelKey: 'habit_category_productivity', icon: <Briefcase size={16} /> },
-  { id: 'learning', labelKey: 'habit_category_learning', icon: <BookOpen size={16} /> },
-  { id: 'spirituality', labelKey: 'habit_category_spirituality', icon: <Sparkles size={16} /> },
-  { id: 'islamic', labelKey: 'habit_category_islamic', icon: <Moon size={16} /> },
-  { id: 'social', labelKey: 'habit_category_social', icon: <Users size={16} /> },
-  { id: 'finance', labelKey: 'habit_category_finance', icon: <DollarSign size={16} /> },
-  { id: 'mindfulness', labelKey: 'habit_category_mindfulness', icon: <Sparkles size={16} /> },
-  { id: 'other', labelKey: 'habit_category_other', icon: <Target size={16} /> },
+  { id: 'health', label: 'Health', icon: <Heart size={16} /> },
+  { id: 'fitness', label: 'Fitness', icon: <Dumbbell size={16} /> },
+  { id: 'productivity', label: 'Productivity', icon: <Briefcase size={16} /> },
+  { id: 'learning', label: 'Learning', icon: <BookOpen size={16} /> },
+  { id: 'spirituality', label: 'Spirituality', icon: <Sparkles size={16} /> },
+  { id: 'islamic', label: 'Islamic', icon: <Moon size={16} /> },
+  { id: 'social', label: 'Social', icon: <Users size={16} /> },
+  { id: 'finance', label: 'Finance', icon: <DollarSign size={16} /> },
+  { id: 'mindfulness', label: 'Mindfulness', icon: <Sparkles size={16} /> },
+  { id: 'other', label: 'Other', icon: <Target size={16} /> },
 ];
 
 export default function CreateHabitForm({ onClose, onSave }) {
-  const { language } = usePreferences();
-  const L = language;
-  const isAr = L === 'ar';
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('💧');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [category, setCategory] = useState('health');
-
-  // Suggestions state
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
-  
-  // Browse ideas modal
-  const [showBrowseModal, setShowBrowseModal] = useState(false);
-  const [browseCategory, setBrowseCategory] = useState('all');
-
-  const handleNameChange = (e) => {
-    const value = e.target.value;
-    setName(value);
-    
-    if (value.trim().length > 0) {
-      const lowerVal = value.toLowerCase();
-      const filtered = HABIT_SUGGESTIONS.filter(
-        (h) => h.ar.includes(lowerVal) || h.en.toLowerCase().includes(lowerVal)
-      );
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-      setFilteredSuggestions([]);
-    }
-  };
-
-  const selectSuggestion = (suggestion) => {
-    setName(isAr ? suggestion.ar : suggestion.en);
-    setIcon(suggestion.icon);
-    setCategory(suggestion.category);
-    setTargetType(suggestion.targetType);
-    setTargetValue(suggestion.targetValue || 1);
-    if (suggestion.targetType === 'numeric') {
-      setUnit(suggestion.unit || '');
-    }
-    setGraceDaysAllowance(suggestion.graceDaysAllowance || 0);
-    setShowSuggestions(false);
-    setShowBrowseModal(false);
-  };
-
   const type = 'daily'; // daily, weekly_target
   const [targetType, setTargetType] = useState('boolean'); // boolean, numeric
   const [targetValue, setTargetValue] = useState(1);
@@ -99,13 +53,13 @@ export default function CreateHabitForm({ onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
       <div className="glass-card w-full max-w-lg overflow-hidden shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Sparkles className="text-violet-400" />
-            {t('habits_build_new', L)}
+            Build a New Habit
           </h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white/50 transition-colors">
             <X size={20} />
@@ -113,12 +67,12 @@ export default function CreateHabitForm({ onClose, onSave }) {
         </div>
 
         {/* Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh] space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
+        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto max-h-[70vh] space-y-6" dir="ltr">
           
           {/* Name & Icon */}
           <div className="flex gap-4 items-end">
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_icon', L)}</label>
+              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Icon</label>
               <div className="relative">
                 <button 
                   type="button"
@@ -142,65 +96,22 @@ export default function CreateHabitForm({ onClose, onSave }) {
               </div>
             </div>
 
-            <div className="flex-grow flex flex-col gap-2 relative">
-              <div className="flex justify-between items-end">
-                <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habits_form_name', L)}</label>
-                <button
-                  type="button"
-                  onClick={() => setShowBrowseModal(true)}
-                  className="text-[10px] font-bold text-violet-400 bg-violet-500/10 px-2 py-1 rounded-md hover:bg-violet-500/20 transition-colors flex items-center gap-1"
-                >
-                  <Search size={12} />
-                  {isAr ? 'تصفح الأفكار' : 'Browse Ideas'}
-                </button>
-              </div>
+            <div className="flex-grow flex flex-col gap-2">
+              <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Habit Name</label>
               <input
                 type="text"
                 required
                 value={name}
-                onChange={handleNameChange}
-                onFocus={() => {
-                  if (name.trim() && filteredSuggestions.length > 0) setShowSuggestions(true);
-                }}
-                onBlur={() => {
-                  setTimeout(() => setShowSuggestions(false), 200);
-                }}
-                placeholder={t('habit_placeholder_example', L)}
+                onChange={e => setName(e.target.value)}
+                placeholder="e.g. Read 20 pages"
                 className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-4 text-white placeholder-white/20 focus:outline-none focus:border-violet-500 transition-colors text-lg font-medium"
               />
-              
-              {/* Autocomplete Suggestions */}
-              {showSuggestions && filteredSuggestions.length > 0 && (
-                <div className="absolute top-[84px] left-0 right-0 z-50 bg-[#1a1b26] border border-white/20 rounded-xl max-h-60 overflow-y-auto shadow-2xl flex flex-col">
-                  {filteredSuggestions.map((sug, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => selectSuggestion(sug)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors border-white/5 text-left ${idx !== filteredSuggestions.length - 1 ? 'border-b' : ''}`}
-                      dir={isAr ? 'rtl' : 'ltr'}
-                    >
-                      <span className="text-2xl">{sug.icon}</span>
-                      <div className="flex flex-col flex-1 items-start">
-                        <span className="text-white font-medium text-base">
-                          {isAr ? sug.ar : sug.en}
-                        </span>
-                        <span className="text-white/40 text-xs flex gap-2">
-                          <span className="capitalize">{t(`habit_category_${sug.category}`, L) || sug.category}</span>
-                          •
-                          {sug.targetType === 'numeric' ? ` ${sug.targetValue} ${sug.unit}` : ' Yes/No'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
           {/* Start Date */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_start_date', L)}</label>
+            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Start Date</label>
             <input
               type="date"
               required
@@ -209,12 +120,12 @@ export default function CreateHabitForm({ onClose, onSave }) {
               className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors font-medium color-scheme-dark"
               style={{ colorScheme: 'dark' }}
             />
-            <p className="text-[10px] text-white/40 mt-1">{t('habit_start_date_hint', L)}</p>
+            <p className="text-[10px] text-white/40 mt-1">If you started this habit in the past, set the date here to track your true progress.</p>
           </div>
 
           {/* Category */}
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">{t('habit_category', L)}</label>
+            <label className="text-xs font-bold text-white/50 uppercase tracking-widest">Category</label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map(cat => (
                 <button
@@ -228,7 +139,7 @@ export default function CreateHabitForm({ onClose, onSave }) {
                   }`}
                 >
                   {cat.icon}
-                  <span className="font-bold text-sm tracking-wide">{t(cat.labelKey, L)}</span>
+                  <span className="font-bold text-sm tracking-wide">{cat.label}</span>
                 </button>
               ))}
             </div>
@@ -329,88 +240,6 @@ export default function CreateHabitForm({ onClose, onSave }) {
           </div>
         </form>
       </div>
-
-      {/* Browse Ideas Modal */}
-      {showBrowseModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
-          <div className="glass-card w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden shadow-2xl relative border-violet-500/20">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-white/5 bg-white/5 shrink-0">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <Search className="text-violet-400" />
-                {isAr ? 'مكتبة العادات' : 'Habit Library'}
-              </h2>
-              <button type="button" onClick={() => setShowBrowseModal(false)} className="p-2 rounded-full hover:bg-white/10 text-white/50 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Category Filter */}
-            <div className="p-4 border-b border-white/5 overflow-x-auto whitespace-nowrap hide-scrollbar shrink-0 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setBrowseCategory('all')}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                  browseCategory === 'all' ? 'bg-violet-500 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {isAr ? 'الكل' : 'All'}
-              </button>
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setBrowseCategory(cat.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
-                    browseCategory === cat.id ? 'bg-violet-500 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
-                  }`}
-                >
-                  {cat.icon}
-                  {t(cat.labelKey, L)}
-                </button>
-              ))}
-            </div>
-
-            {/* Habits Grid */}
-            <div className="p-6 overflow-y-auto flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {HABIT_SUGGESTIONS
-                .filter(sug => browseCategory === 'all' || sug.category === browseCategory)
-                .map((sug, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => selectSuggestion(sug)}
-                  className="flex items-start gap-3 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 hover:border-violet-500/30 transition-all text-left group"
-                  dir={isAr ? 'rtl' : 'ltr'}
-                >
-                  <div className="w-12 h-12 bg-black/30 rounded-xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform shrink-0">
-                    {sug.icon}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-white font-bold text-base mb-2">
-                      {isAr ? sug.ar : sug.en}
-                    </span>
-                    <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-wider">
-                      <span className="bg-white/10 text-white/60 px-2 py-0.5 rounded-md">
-                        {t(`habit_category_${sug.category}`, L) || sug.category}
-                      </span>
-                      {sug.targetType === 'numeric' ? (
-                        <span className="bg-fuchsia-500/20 text-fuchsia-300 px-2 py-0.5 rounded-md">
-                          {sug.targetValue} {sug.unit}
-                        </span>
-                      ) : (
-                        <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-md">
-                          Yes / No
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

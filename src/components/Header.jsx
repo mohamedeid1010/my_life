@@ -63,7 +63,7 @@ export default function Header({ targetDays, setTargetDays, onExport, workoutSys
             >
               <div className="flex items-center gap-2">
                 <Target size={18} className="text-violet-400" />
-                <span className="text-sm font-bold text-violet-300">{t('gym_weekly_goal', L)}</span>
+                <span className="text-sm font-bold text-violet-300">Weekly Goal:</span>
               </div>
               <div className="flex items-center gap-3 px-2 py-1 rounded-lg"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -123,7 +123,7 @@ export default function Header({ targetDays, setTargetDays, onExport, workoutSys
               }}
             >
               <Download size={18} />
-              {t('gym_export_csv', L)}
+              Export CSV
             </button>
           )}
         </div>

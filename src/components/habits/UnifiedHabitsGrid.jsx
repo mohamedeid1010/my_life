@@ -1,72 +1,8 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
 import { Plus, Check, Clock, Edit2 } from 'lucide-react';
-import usePreferences from '../../hooks/usePreferences';
-import { t } from '../../config/translations';
 
-function HabitRow({ habit, days, todayObj, startDateObj, onLogEntry, onExpandDetails }) {
-  const { language } = usePreferences();
-  const L = language;
-
-  return (
-    <div className="flex items-center group relative rounded-lg transition-colors hover:bg-white/[0.02]">
-      {/* Habit Name/Icon column */}
-      <div 
-        className="w-56 shrink-0 flex items-center gap-2 px-4 border-r border-white/10 group-hover:border-white/30 transition-colors cursor-pointer"
-        onClick={() => onExpandDetails && onExpandDetails(habit)}
-      >
-        <span className="text-xl">{habit.icon}</span>
-        <span className="text-xs font-bold text-white/80 truncate group-hover:text-white transition-colors">
-          {habit.name}
-        </span>
-      </div>
-      
-      {/* Heatmap Cells column */}
-      <div className="flex gap-1.5 pl-4 shrink-0">
-        {days.map(day => {
-          const entry = habit.history?.[day.dateStr];
-          const isBeforeStart = day.dateObj < startDateObj;
-          const isFuture = day.dateObj > todayObj;
-          
-          let bgColor = 'bg-white/5';
-          if (isBeforeStart || isFuture) {
-            bgColor = 'bg-transparent border border-white/5 border-dashed pointer-events-none opacity-20';
-          } else if (entry?.status === 'completed') {
-            bgColor = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] hover:scale-125 z-10 transition-transform';
-          } else if (entry?.status === 'missed') {
-            bgColor = 'bg-red-500/30';
-          } else if (entry?.status === 'skipped') {
-            bgColor = 'bg-yellow-500/50';
-          }
-
-          return (
-            <div
-              key={`${habit.id}-${day.dateStr}`}
-              onClick={() => {
-                if (!onLogEntry || isBeforeStart || isFuture) return;
-                let nextStatus = 'completed';
-                if (entry?.status === 'completed') nextStatus = 'missed';
-                else if (entry?.status === 'missed') nextStatus = 'skipped';
-                else if (entry?.status === 'skipped') nextStatus = 'pending';
-                
-                onLogEntry(habit.id, day.dateStr, { 
-                  status: nextStatus,
-                  timestamp: new Date().toISOString()
-                });
-              }}
-              title={`${habit.name} - ${day.dateStr}${entry?.status ? ` (${entry.status})` : ''}${isBeforeStart ? ` (${t('status_before_start', L)})` : isFuture ? ` (${t('status_future', L)})` : ` • ${t('click_to_toggle', L)}`}`}
-              className={`w-6 h-6 rounded flex items-center justify-center relative ${!isBeforeStart && !isFuture ? 'hover:ring-2 hover:ring-white/50 hover:z-20 cursor-pointer' : ''} transition-all ${bgColor}`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-export default function UnifiedHabitsGrid({ habits, onLogEntry, onExpandDetails }) {
-  const { language } = usePreferences();
-  const L = language;
+export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
   const scrollRef = useRef(null);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -102,8 +38,6 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry, onExpandDetails 
       scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
     }
   }, [habits]);
-
-
 
   if (!habits || habits.length === 0) return null;
 
@@ -148,7 +82,7 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry, onExpandDetails 
         <div className="min-w-max inline-block">
           {/* Header Row (Days) */}
           <div className="flex px-4 mb-2">
-            <div className="w-56 shrink-0" /> {/* Spacer for habit names */}
+            <div className="w-48 shrink-0" /> {/* Spacer for habit names */}
             <div className="flex gap-1.5 pl-4 shrink-0">
               {days.map(day => (
                 <div 
@@ -170,43 +104,83 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry, onExpandDetails 
 
           {/* Habit Rows */}
           <div className="flex flex-col gap-2 bg-black/20 rounded-2xl p-4 border border-white/5">
-                {habits.map((habit) => {
-                  // Safety check against missing start date
-                  let startDateObj = todayObj;
-                  if (habit.history) {
-                     const allDates = Object.keys(habit.history).sort();
-                     if (habit.startDate) {
-                        startDateObj = new Date(habit.startDate);
-                     } else if (allDates.length > 0) {
-                        startDateObj = new Date(allDates[0]);
-                     }
-                  } else if (habit.startDate) {
-                     startDateObj = new Date(habit.startDate);
-                  }
-                  startDateObj.setHours(0,0,0,0);
+            {habits.map((habit) => {
+              // Safety check against missing start date
+              let startDateObj = todayObj;
+              if (habit.history) {
+                 const allDates = Object.keys(habit.history).sort();
+                 if (habit.startDate) {
+                    startDateObj = new Date(habit.startDate);
+                 } else if (allDates.length > 0) {
+                    startDateObj = new Date(allDates[0]);
+                 }
+              } else if (habit.startDate) {
+                 startDateObj = new Date(habit.startDate);
+              }
+              startDateObj.setHours(0,0,0,0);
 
-                  return (
-                    <HabitRow 
-                      key={habit.id}
-                      habit={habit}
-                      days={days}
-                      todayObj={todayObj}
-                      startDateObj={startDateObj}
-                      onLogEntry={onLogEntry}
-                      onExpandDetails={onExpandDetails}
-                    />
-                  );
-                })}
+              return (
+                <div key={habit.id} className="flex items-center group">
+                  {/* Habit Name/Icon column */}
+                  <div className="w-48 shrink-0 flex items-center gap-3 pr-4 border-r border-white/10 group-hover:border-white/30 transition-colors">
+                    <span className="text-xl">{habit.icon}</span>
+                    <span className="text-xs font-bold text-white/80 truncate group-hover:text-white transition-colors">
+                      {habit.name}
+                    </span>
+                  </div>
+                  
+                  {/* Heatmap Cells column */}
+                  <div className="flex gap-1.5 pl-4 shrink-0">
+                    {days.map(day => {
+                      const entry = habit.history?.[day.dateStr];
+                      const isBeforeStart = day.dateObj < startDateObj;
+                      const isFuture = day.dateObj > todayObj;
+                      
+                      let bgColor = 'bg-white/5';
+                      if (isBeforeStart || isFuture) {
+                        bgColor = 'bg-transparent border border-white/5 border-dashed pointer-events-none opacity-20';
+                      } else if (entry?.status === 'completed') {
+                        bgColor = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)] hover:scale-125 z-10 transition-transform';
+                      } else if (entry?.status === 'missed') {
+                        bgColor = 'bg-red-500/30';
+                      } else if (entry?.status === 'skipped') {
+                        bgColor = 'bg-yellow-500/50';
+                      }
+
+                      return (
+                        <div
+                          key={`${habit.id}-${day.dateStr}`}
+                          onClick={() => {
+                            if (!onLogEntry || isBeforeStart || isFuture) return;
+                            let nextStatus = 'completed';
+                            if (entry?.status === 'completed') nextStatus = 'missed';
+                            else if (entry?.status === 'missed') nextStatus = 'skipped';
+                            else if (entry?.status === 'skipped') nextStatus = 'pending';
+                            
+                            onLogEntry(habit.id, day.dateStr, { 
+                              status: nextStatus,
+                              timestamp: new Date().toISOString()
+                            });
+                          }}
+                          title={`${habit.name} - ${day.dateStr}${entry?.status ? ` (${entry.status})` : ''}${isBeforeStart ? ' (Before Start)' : isFuture ? ' (Future)' : ' • Click to toggle'}`}
+                          className={`w-6 h-6 rounded flex items-center justify-center relative ${!isBeforeStart && !isFuture ? 'hover:ring-2 hover:ring-white/50 hover:z-20 cursor-pointer' : ''} transition-all ${bgColor}`}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
       
       {/* Legend */}
       <div className="flex items-center justify-end gap-4 text-[10px] font-bold text-white/40 uppercase tracking-widest mt-2">
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-white/5" /> {t('status_pending', L)}</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> {t('status_missed', L)}</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-yellow-500/50" /> {t('status_grace', L)}</div>
-        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /> {t('status_success', L)}</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-white/5" /> Pending</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/30" /> Missed</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-yellow-500/50" /> Grace</div>
+        <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500" /> Success</div>
       </div>
     </div>
   );

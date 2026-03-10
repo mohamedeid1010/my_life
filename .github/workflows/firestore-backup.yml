@@ -1,0 +1,55 @@
+name: Daily Firestore Backup to GitHub
+
+on:
+  schedule:
+    - cron: "0 3 * * *"  # Every day at 3:00 AM UTC
+  workflow_dispatch:  # Can be triggered manually
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: npm install firebase-admin
+
+      - name: Create Service Account Key
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > serviceAccountKey.json
+
+      - name: Run Backup
+        env:
+          FIREBASE_SERVICE_ACCOUNT_PATH: ./serviceAccountKey.json
+        run: node scripts/firestore-backup.js
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "backup@github.com"
+          git config --local user.name "Backup Bot"
+
+      - name: Commit and Push Backup
+        run: |
+          cd backups
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "🔄 Auto-backup: $(date +'%Y-%m-%d %H:%M')"
+            git push origin $(git rev-parse --abbrev-ref HEAD)
+          else
+            echo "No changes to backup"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup
+        if: always()
+        run: rm -f serviceAccountKey.json

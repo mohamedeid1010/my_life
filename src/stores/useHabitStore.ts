@@ -421,17 +421,11 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
 
     set({ loaded: false });
 
-    // Agent Log
-    fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:initSync',message:'Habits initSync called',data:{uid},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-
     const habitsRef = collection(db, `users/${uid}/habits`);
     const q = query(habitsRef);
 
     // Attach real-time listener: Fetches habits AND their history efficiently in ONE read per doc.
     const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-      // Agent Log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_habits',message:'Habits snapshot',data:{docsCount:snapshot.docs.length},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      
       const habitsData: HabitRaw[] = snapshot.docs.map((doc) => {
         const data = doc.data();
         return {
@@ -443,9 +437,6 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
 
       set({ habits: habitsData, loaded: true });
     }, (error) => {
-      // Agent Log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_error',message:'Habits onSnapshot error',data:{err:String(error?.message||error)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      
       console.error("[HabitStore] Real-time sync error:", error);
       set({ loaded: true });
     });

@@ -54,8 +54,8 @@ export default function WeeklyPlanner() {
 
   // Use data from store
   const startDay = data?.startDay || 'sat';
-  const days = data?.days || [];
-  const masterTasks = data?.masterTasks || [];
+  const days = useMemo(() => data?.days || [], [data?.days]);
+  const masterTasks = useMemo(() => data?.masterTasks || [], [data?.masterTasks]);
   const notes = data?.notes || '';
   const reflections = data?.reflections || '';
 

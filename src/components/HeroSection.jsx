@@ -5,7 +5,13 @@ import { t } from '../config/translations';
 /**
  * Hero Section — Huge streak counter with sub-stats
  */
-export default function HeroSection({ stats }) {
+export default function HeroSection({ stats = {} }) {
+  const { 
+    currentStreak = 0, 
+    longestStreak = 0, 
+    successRate = 0, 
+    disciplineScore = 0 
+  } = stats;
   const { language } = usePreferences();
   const L = language;
   return (
@@ -32,7 +38,7 @@ export default function HeroSection({ stats }) {
         <div className="flex flex-col items-start animate-count">
           <div className="flex items-baseline gap-2">
             <span className="text-5xl sm:text-6xl font-black tracking-tighter gradient-text glow-accent leading-none">
-              {stats.currentStreak}
+              {currentStreak}
             </span>
             <span className="text-lg sm:text-xl font-bold text-white/50 uppercase tracking-widest">
               {t('gym_streak', L)}
@@ -43,25 +49,25 @@ export default function HeroSection({ stats }) {
           </p>
         </div>
       </div>
-
+ 
       {/* Sub-stats row */}
       <div className="relative z-10 flex flex-wrap justify-center md:justify-end gap-3 w-full md:w-auto">
         <SubStat
           icon={Trophy}
           label={t('longest', L)}
-          value={`${stats.longestStreak} ${t('gym_streak', L)}`}
+          value={`${longestStreak} ${t('gym_streak', L)}`}
           color="text-amber-400"
         />
         <SubStat
           icon={Target}
           label={t('success_rate', L)}
-          value={`${stats.successRate}%`}
+          value={`${successRate}%`}
           color="text-emerald-400"
         />
         <SubStat
           icon={Zap}
           label={t('discipline', L)}
-          value={`${stats.disciplineScore}/100`}
+          value={`${disciplineScore}/100`}
           color="text-violet-400"
         />
       </div>

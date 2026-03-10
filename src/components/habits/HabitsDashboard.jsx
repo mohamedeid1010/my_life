@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import HabitCard from './HabitCard';
 import { Plus, ArrowUpDown } from 'lucide-react';
 import {
@@ -13,7 +13,7 @@ import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from '@dnd-kit/sortable';
 import {
   useSortable,
@@ -72,10 +72,10 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
     })
   );
 
-  function handleDragEnd(event) {
+  const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
 
-    if (active.id !== over.id) {
+    if (over && active.id !== over.id) {
       const oldIndex = habits.findIndex(h => h.id === active.id);
       const newIndex = habits.findIndex(h => h.id === over.id);
 
@@ -86,7 +86,7 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
         reorderHabits(user.uid, habitIds);
       }
     }
-  }
+  }, [habits, user, reorderHabits]);
 
   // Calculate today's overall progress
   const total = habits.length;
@@ -184,7 +184,7 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext items={habits.map(h => h.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={habits.map(h => h.id)} strategy={rectSortingStrategy}>
               {habits.map(habit => (
                 <SortableHabitCard
                   key={habit.id}
@@ -209,20 +209,6 @@ export default function HabitsDashboard({ habits, onLogEntry, onExpandDetails, o
       </div>
     </div>
   );
-
-  function handleDragEnd(event) {
-    const { active, over } = event;
-
-    if (active.id !== over.id) {
-      const oldIndex = habits.findIndex(h => h.id === active.id);
-      const newIndex = habits.findIndex(h => h.id === over.id);
-
-      const reorderedHabits = arrayMove(habits, oldIndex, newIndex);
-      const habitIds = reorderedHabits.map(h => h.id);
-
-      if (user?.uid) {
-        reorderHabits(user.uid, habitIds);
-      }
-    }
-  }
 }
+
+

@@ -469,8 +469,11 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
 
     try {
       await setDoc(habitRef, payload);
+      console.log(`[HabitStore] ✅ Habit saved to Firestore: ${habitId}`);
     } catch (err) {
-      console.error("[HabitStore] Failed to add habit", err);
+      console.error("[HabitStore] ❌ Failed to add habit to Firestore:", err);
+      console.error("[HabitStore] Error code:", err?.code);
+      console.error("[HabitStore] Error message:", err?.message);
     }
   },
 
@@ -580,8 +583,11 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
         },
         updatedAt: serverTimestamp()
       }, { merge: true });
+      console.log(`[HabitStore] ✅ Entry logged for ${dateStr}: ${habitId}`);
     } catch (err) {
-      console.error("[HabitStore] Failed to log entry", err);
+      console.error("[HabitStore] ❌ Failed to log entry:", err);
+      console.error("[HabitStore] Error code:", err?.code);
+      console.error("[HabitStore] Error message:", err?.message);
     }
   },
 }));

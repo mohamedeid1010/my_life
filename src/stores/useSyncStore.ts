@@ -1,51 +1,66 @@
-import { create } from 'zustand';
-import { SyncState, PendingAction, OfflineActionType } from '../types/offline.types';
+/**
+ * ═══════════════════════════════════════════════════════════
+ * useSyncStore — Zustand store for offline sync & network state
+ * ═══════════════════════════════════════════════════════════
+ *
+ * Responsibilities:
+ * - Track online/offline state
+ * - Queue pending actions when offline
+ * - Flush queue when app comes back online
+ * - Trigger Firebase sync operations
+ */
 
-interface SyncStore extends SyncState {
-  // Actions
-  addPendingAction: (action: Omit<PendingAction, 'id' | 'createdAt'>) => void;
-  removePendingAction: (id: string) => void;
-  clearPendingActions: () => void;
-  setOnline: (online: boolean) => void;
-  setError: (error: string | null) => void;
-  updateLastSynced: () => void;
-  
-  // Specialized methods
-  initOnlineListener: () => () => void; // Returns unsubscribe function
-  flushQueue: (handler: (action: PendingAction) => Promise<void>) => Promise<void>;
+import { create } from 'zustand';
+
+/* ─────────────── Store Interface ─────────────── */
+
+interface SyncAction {
+  id: string;
+  type: string;
+  payload: any;
+  timestamp: number;
 }
 
-/**
- * Offline sync store using Zustand
- * Manages pending actions queue and online/offline state
- */
+interface SyncStore {
+  isOnline: boolean;
+  pendingActions: SyncAction[];
+
+  setOnlineStatus: (online: boolean) => void;
+  addPendingAction: (action: SyncAction) => void;
+  removePendingAction: (actionId: string) => void;
+  clearPendingActions: () => void;
+  initOnlineListener: () => (() => void) | undefined;
+  flushQueue: (callback: (action: SyncAction) => Promise<void>) => Promise<void>;
+}
+
+/* ─────────────── Store Definition ─────────────── */
+
 export const useSyncStore = create<SyncStore>((set, get) => ({
-  // Initial state
+  // ── Initial State ──
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
-  isSyncing: false,
   pendingActions: [],
-  lastSyncedAt: null,
-  lastError: null,
 
-  // ──── State Mutators ────
+  // ── Actions ──
 
-  addPendingAction: (action) => {
-    const id = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const newAction: PendingAction = {
-      ...action,
-      id,
-      createdAt: new Date().toISOString(),
-      retryCount: 0,
-    };
+  setOnlineStatus: (online: boolean) => {
+    set({ isOnline: online });
+    // Trigger flush when coming back online
+    if (online) {
+      get().flushQueue(async () => {
+        // Default no-op; caller will provide the actual callback
+      });
+    }
+  },
 
+  addPendingAction: (action: SyncAction) => {
     set((state) => ({
-      pendingActions: [...state.pendingActions, newAction],
+      pendingActions: [...state.pendingActions, action],
     }));
   },
 
-  removePendingAction: (id) => {
+  removePendingAction: (actionId: string) => {
     set((state) => ({
-      pendingActions: state.pendingActions.filter((action) => action.id !== id),
+      pendingActions: state.pendingActions.filter((a) => a.id !== actionId),
     }));
   },
 
@@ -53,27 +68,16 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     set({ pendingActions: [] });
   },
 
-  setOnline: (online) => {
-    set({ isOnline: online });
-  },
-
-  setError: (error) => {
-    set({ lastError: error });
-  },
-
-  updateLastSynced: () => {
-    set({ lastSyncedAt: new Date().toISOString() });
-  },
-
-  // ──── Specialized Methods ────
-
-  /**
-   * Initialize window online/offline event listeners
-   * Returns unsubscribe function
-   */
   initOnlineListener: () => {
-    const handleOnline = () => get().setOnline(true);
-    const handleOffline = () => get().setOnline(false);
+    if (typeof window === 'undefined') return undefined;
+
+    const handleOnline = () => {
+      get().setOnlineStatus(true);
+    };
+
+    const handleOffline = () => {
+      get().setOnlineStatus(false);
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
@@ -85,40 +89,21 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
     };
   },
 
-  /**
-   * Flush pending actions queue by calling handler for each action
-   * Remove action from queue after successful handler execution
-   * Increment retry count on error (but don't remove)
-   */
-  flushQueue: async (handler) => {
-    const state = get();
+  flushQueue: async (callback: (action: SyncAction) => Promise<void>) => {
+    const { pendingActions, isOnline } = get();
 
-    if (state.isSyncing || state.pendingActions.length === 0) {
+    if (!isOnline || pendingActions.length === 0) {
       return;
     }
 
-    set({ isSyncing: true });
-
-    try {
-      const actionsToProcess = [...state.pendingActions];
-
-      for (const action of actionsToProcess) {
-        try {
-          await handler(action);
-          // Success: remove from queue
-          get().removePendingAction(action.id);
-          get().updateLastSynced();
-          get().setError(null);
-        } catch (error) {
-          // Error: increment retry count but keep in queue
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          get().setError(errorMsg);
-          console.warn(`Failed to sync action ${action.id}:`, errorMsg);
-          // Could implement exponential backoff here by incrementing retryCount
-        }
+    for (const action of pendingActions) {
+      try {
+        await callback(action);
+        get().removePendingAction(action.id);
+      } catch (err) {
+        console.error('[SyncStore] Failed to sync action:', action, err);
+        // Keep action in queue for retry
       }
-    } finally {
-      set({ isSyncing: false });
     }
   },
 }));

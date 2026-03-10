@@ -553,28 +553,40 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     dateStr: string,
     entryData: Partial<HabitEntry>
   ) => {
+    // Get current state for optimistic + correct merge
+    const currentHabit = get().habits.find((h) => h.id === habitId);
+    if (!currentHabit) {
+      console.error("[HabitStore] Habit not found:", habitId);
+      return;
+    }
+
+    const prevHistory = currentHabit.history || {};
+    const currentEntry = prevHistory[dateStr] || {};
+    const mergedEntry = { ...currentEntry, ...entryData };
+
     // 1. Optimistic update
     set((state) => ({
       habits: state.habits.map((h) => {
         if (h.id !== habitId) return h;
-        const prevHistory = h.history || {};
-        const currentEntry = prevHistory[dateStr] || {};
         return {
           ...h,
           history: {
             ...prevHistory,
-            [dateStr]: { ...currentEntry, ...entryData },
+            [dateStr]: mergedEntry,
           },
         };
       }),
     }));
 
-    // 2. Firestore write using dot notation to update ONLY the specific day in the history map
+    // 2. Firestore write: Update the entire history map properly
     const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
     
     try {
       await setDoc(habitRef, {
-        [`history.${dateStr}`]: { ...entryData, loggedAt: serverTimestamp() },
+        history: {
+          ...prevHistory,
+          [dateStr]: { ...mergedEntry, loggedAt: serverTimestamp() },
+        },
         updatedAt: serverTimestamp()
       }, { merge: true });
     } catch (err) {

@@ -56,9 +56,6 @@ const db = (() => {
         tabManager: persistentMultipleTabManager()
       })
     }, DB_ID); // Your project's database named "default"
-    // #region agent log
-    fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'firebase.js:db_init',message:'Firestore initialized',data:{databaseId:DB_ID},hypothesisId:'A',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return instance;
   } catch (err) {
     // If it throws an error containing 'already-initialized' (typical in Vite HMR),

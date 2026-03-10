@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { X, User, Palette, Upload, LogOut, Navigation, ChevronUp, ChevronDown, Eye, EyeOff, GripVertical, Zap } from 'lucide-react';
+import { X, User, Palette, Upload, LogOut, Navigation, ChevronUp, ChevronDown, Eye, EyeOff, GripVertical } from 'lucide-react';
 import usePreferences from '../hooks/usePreferences';
 import { useAuthStore } from '../stores/useAuthStore';
-import { useHabitStore } from '../stores/useHabitStore';
 import { t } from '../config/translations';
 
 export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, onNavConfigChange, allNavPages }) {
@@ -18,69 +17,7 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
   const [activeTab, setActiveTab] = useState('account');
   const [localName, setLocalName] = useState(profile.name || '');
   const [localPhoto, setLocalPhoto] = useState(profile.photoURL || '');
-  const [isAddingDemo, setIsAddingDemo] = useState(false);
   const fileInputRef = useRef(null);
-
-  const sampleHabits = [
-    {
-      name: '📚 القراءة',
-      description: 'قراءة 30 دقيقة يومياً',
-      targetType: 'boolean',
-      frequency: 'daily',
-      icon: '📚',
-      graceDaysAllowance: 2,
-    },
-    {
-      name: '🏃 الجري',
-      description: 'الجري أو المشي',
-      targetType: 'boolean',
-      frequency: 'daily',
-      icon: '🏃',
-      graceDaysAllowance: 1,
-    },
-    {
-      name: '💧 شرب الماء',
-      description: 'شرب 8 أكواب ماء يومياً',
-      targetType: 'numeric',
-      targetValue: 8,
-      unit: 'أكواب',
-      frequency: 'daily',
-      icon: '💧',
-      graceDaysAllowance: 0,
-    },
-    {
-      name: '🧘 التأمل',
-      description: 'التأمل 10 دقائق',
-      targetType: 'boolean',
-      frequency: 'daily',
-      icon: '🧘',
-      graceDaysAllowance: 1,
-    },
-    {
-      name: '✍️ الكتابة',
-      description: 'كتابة يومية',
-      targetType: 'boolean',
-      frequency: 'daily',
-      icon: '✍️',
-      graceDaysAllowance: 2,
-    },
-  ];
-
-  const handleAddDemoHabits = async () => {
-    setIsAddingDemo(true);
-    const addHabit = useHabitStore.getState().addHabit;
-    
-    for (const habit of sampleHabits) {
-      try {
-        await addHabit(user.uid, habit);
-        await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay between adds
-      } catch (err) {
-        console.error(`Failed to add ${habit.name}:`, err);
-      }
-    }
-    
-    setIsAddingDemo(false);
-  };
 
   if (!isOpen) return null;
 
@@ -151,7 +88,6 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
     { id: 'account', label: t('settings_account', L), icon: User },
     { id: 'appearance', label: t('settings_appearance', L), icon: Palette },
     { id: 'navigation', label: t('settings_navigation', L) || 'Navigation', icon: Navigation },
-    { id: 'demo', label: '🌱 Demo Data', icon: Zap },
   ];
 
   return (
@@ -436,56 +372,6 @@ export default function SettingsModal({ isOpen, onClose, onLogout, navConfig, on
               >
                 {L === 'ar' ? 'إعادة التعيين للافتراضي' : 'Reset to Default'}
               </button>
-            </div>
-          )}
-
-          {/* ─── DEMO DATA TAB ─── */}
-          {activeTab === 'demo' && (
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs text-white/60 leading-relaxed mb-4">
-                  {L === 'ar' 
-                    ? 'أضف عادات تجريبية لاختبار النظام. يمكنك حذفها لاحقاً.'
-                    : 'Add sample habits to test the system. You can delete them later.'}
-                </p>
-                <div className="p-4 rounded-xl bg-violet-500/10 border border-violet-500/20">
-                  <h4 className="font-bold text-sm text-white/80 mb-3">📊 {L === 'ar' ? 'العادات التي ستُضاف:' : 'Sample Habits:'}</h4>
-                  <div className="space-y-2">
-                    {sampleHabits.map((habit, idx) => (
-                      <div key={idx} className="text-xs text-white/60">
-                        {habit.name} <span className="text-white/40">— {habit.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={handleAddDemoHabits}
-                disabled={isAddingDemo}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all ${
-                  isAddingDemo
-                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                    : 'bg-violet-500/20 text-violet-300 hover:bg-violet-500/30 active:scale-95'
-                }`}
-              >
-                {isAddingDemo ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 rounded-full border-2 border-violet-400/30 border-t-violet-400 animate-spin" />
-                    {L === 'ar' ? 'جاري الإضافة...' : 'Adding...'}
-                  </span>
-                ) : (
-                  `🌱 ${L === 'ar' ? 'أضف البيانات التجريبية' : 'Add Sample Habits'}`
-                )}
-              </button>
-
-              <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20">
-                <p className="text-[10px] text-yellow-600/70 leading-relaxed">
-                  {L === 'ar'
-                    ? '⚠️ سيتم إضافة 5 عادات تجريبية. يمكنك حذفها من صفحة العادات.'
-                    : '⚠️ 5 sample habits will be added. You can delete them from the Habits page.'}
-                </p>
-              </div>
             </div>
           )}
         </div>

@@ -104,30 +104,26 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
   userId: null,
   unsubscribeFn: null,
 
-  initialize: (userId: string) => {
+initialize: (userId: string) => {
     const { unsubscribeFn } = get();
     if (unsubscribeFn) {
-      unsubscribeFn(); // Clean up previous listener
+      unsubscribeFn(); 
     }
 
     set({ loading: true, loaded: false, userId });
 
     const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
     
-    // Attach real-time listener
-    const unsubscribe = onSnapshot(docRef, (snapshot) => {
-      const { saving } = get();
-      
-      // If we are currently saving, ignore the server snapshot to avoid over-writing 
-      // the local optimistic state (which is more up-to-date).
-      // The saving flip back to false will happen once the write is truly confirmed.
+    // تفعيل includeMetadataChanges بيخلي فايربيس يرد فوراً من الـ Cache المحلي
+    const unsubscribe = onSnapshot(docRef, { includeMetadataChanges: true }, (snapshot) => {
       if (snapshot.exists()) {
         const serverData = snapshot.data() as WeeklyPlannerData;
-        if (!saving) {
-          set({ data: serverData, loading: false, loaded: true });
-        }
+        
+        // إزالة قفل الـ saving تماماً
+        // فايربيس ذكي كفاية إنه يدمج تعديلاتك المحلية مع تعديلات السيرفر
+        set({ data: serverData, loading: false, loaded: true, saving: false });
+        
       } else {
-        // Doc doesn't exist yet, initialize with default data
         const defaultData = createDefaultData();
         setDoc(docRef, defaultData).catch(err => {
           console.error("[PlannerStore] Failed to create default data", err);
@@ -154,32 +150,29 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
     const { data, userId } = get();
     if (!data || !userId) return;
 
-    // 1. Optimistic Update (Immediate Local State)
+    // 1. التحديث المحلي الفوري للشاشة (Optimistic UI)
     const newData = { ...data, ...updates };
     set({ data: newData, saving: true });
 
-    const path = `users/${userId}/weekly-planner/current`;
     const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
+    const path = `users/${userId}/weekly-planner/current`;
     const { isOnline } = useSyncStore.getState();
 
-    // 2. Debounced Firestore Write
-    if (debounceTimers[path]) clearTimeout(debounceTimers[path]);
-
-    debounceTimers[path] = setTimeout(async () => {
-      if (isOnline) {
-        try {
-          await setDoc(docRef, newData, { merge: true });
-          set({ saving: false });
-        } catch (err) {
-          console.error("[PlannerStore] Write failed, enqueuing...", err);
-          set({ saving: false });
-          useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
-        }
-      } else {
-        useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
+    // 2. إرسال مباشر لفايربيس (بدون setTimeout)
+    if (isOnline) {
+      try {
+        // setDoc هنا مش بيعطل الشاشة، ده بيكتب في الـ Cache المحلي الأول
+        await setDoc(docRef, newData, { merge: true });
+        // الـ saving هيتحول لـ false أوتوماتيك من داخل الـ onSnapshot
+      } catch (err) {
+        console.error("[PlannerStore] Write failed, enqueuing...", err);
         set({ saving: false });
+        useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
       }
-    }, 1000); // 1 second debounce for heavy typing (notes/reflections)
+    } else {
+      useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
+      set({ saving: false });
+    }
   },
 
   addMasterTask: (task) => {

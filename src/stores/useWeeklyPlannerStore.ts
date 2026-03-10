@@ -1,23 +1,21 @@
 /**
  * ═══════════════════════════════════════════════════════════
- *  useWeeklyPlannerStore — Zustand store for Weekly Planner
+ * useWeeklyPlannerStore — Zustand store for Weekly Planner
  * ═══════════════════════════════════════════════════════════
  *
- *  Responsibilities:
- *  - CRUD operations for weekly planner data (Firestore subcollection: users/{uid}/weekly-planner)
- *  - Master tasks, daily tasks, notes, reflections
- *  - Robust real-time Firestore sync via onSnapshot
- *  - Offline action queuing via useSyncStore
- *  - Optimized writes with debouncing and optimistic updates
+ * Responsibilities:
+ * - CRUD operations for weekly planner data (Firestore subcollection: users/{uid}/weekly-planner)
+ * - Master tasks, daily tasks, notes, reflections
+ * - Robust real-time Firestore sync via native onSnapshot
+ * - Offline action queuing natively handled by Firebase persistentLocalCache
+ * - Zero manual debouncing: relying entirely on Firebase's internal batching
  */
 
 import { create } from 'zustand';
 import {
-  collection, doc, setDoc, getDocs, getDocsFromServer, deleteDoc,
-  onSnapshot, query, where, writeBatch, serverTimestamp
+  doc, setDoc, onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useSyncStore } from './useSyncStore';
 
 import type { WeeklyPlannerData, MasterTask, DayTask, DayData } from '../types/weekly-planner.types';
 
@@ -34,6 +32,37 @@ function generateId(): string {
   }
   return Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
 }
+
+// Helper to get current week ID
+function getCurrentWeekId(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  // Adjust to start on Saturday or defined start day if needed, but for ID 
+  // we just need a unique week identifier. Sat-based weeks 2026-WXX.
+  const start = new Date(year, 0, 3);
+  const diff = now.getTime() - start.getTime();
+  const oneWeek = 1000 * 60 * 60 * 24 * 7;
+  const week = Math.floor(diff / oneWeek) + 1;
+  return `${year}-W${week.toString().padStart(2, '0')}`;
+}
+
+// Default data initialization
+const createDefaultData = (): WeeklyPlannerData => ({
+  startDay: 'sat',
+  days: [
+    { id: 'sat', name: 'Saturday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'sun', name: 'Sunday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'mon', name: 'Monday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'tue', name: 'Tuesday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'wed', name: 'Wednesday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'thu', name: 'Thursday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+    { id: 'fri', name: 'Friday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
+  ],
+  masterTasks: [],
+  notes: '',
+  reflections: '',
+  weekId: getCurrentWeekId(),
+});
 
 interface WeeklyPlannerStore {
   // ── State ──
@@ -58,44 +87,6 @@ interface WeeklyPlannerStore {
   removeDayTask: (dayId: string, taskId: string) => void;
 }
 
-// Helper to get current week ID
-function getCurrentWeekId(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  // Adjust to start on Saturday or defined start day if needed, but for ID 
-  // we just need a unique week identifier. Sat-based weeks 2026-WXX.
-  const start = new Date(year, 0, 3);
-  const diff = now.getTime() - start.getTime();
-  const oneWeek = 1000 * 60 * 60 * 24 * 7;
-  const week = Math.floor(diff / oneWeek) + 1;
-  return `${year}-W${week.toString().padStart(2, '0')}`;
-}
-
-// Default data
-const createDefaultData = (): WeeklyPlannerData => ({
-  startDay: 'sat',
-  days: [
-    { id: 'sat', name: 'Saturday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'sun', name: 'Sunday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'mon', name: 'Monday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'tue', name: 'Tuesday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'wed', name: 'Wednesday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'thu', name: 'Thursday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-    { id: 'fri', name: 'Friday', tasks: Array.from({ length: 3 }, () => ({ id: generateId(), masterId: null, text: '', done: false })) },
-  ],
-  masterTasks: [],
-  notes: '',
-  reflections: '',
-  weekId: getCurrentWeekId(),
-});
-
-/** 
- * Simple debouncer for Firestore writes
- * key: document path
- * value: Timeout ID
- */
-const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
-
 export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
   data: null,
   loading: false,
@@ -104,26 +95,23 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
   userId: null,
   unsubscribeFn: null,
 
-initialize: (userId: string) => {
+  initialize: (userId: string) => {
     const { unsubscribeFn } = get();
     if (unsubscribeFn) {
-      unsubscribeFn(); 
+      unsubscribeFn(); // Clean up previous listener
     }
 
     set({ loading: true, loaded: false, userId });
 
     const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
     
-    // تفعيل includeMetadataChanges بيخلي فايربيس يرد فوراً من الـ Cache المحلي
-    const unsubscribe = onSnapshot(docRef, { includeMetadataChanges: true }, (snapshot) => {
+    // Attach real-time listener (Simplified to match Habits store)
+    const unsubscribe = onSnapshot(docRef, (snapshot) => {
       if (snapshot.exists()) {
         const serverData = snapshot.data() as WeeklyPlannerData;
-        
-        // إزالة قفل الـ saving تماماً
-        // فايربيس ذكي كفاية إنه يدمج تعديلاتك المحلية مع تعديلات السيرفر
         set({ data: serverData, loading: false, loaded: true, saving: false });
-        
       } else {
+        // Doc doesn't exist yet, initialize with default data
         const defaultData = createDefaultData();
         setDoc(docRef, defaultData).catch(err => {
           console.error("[PlannerStore] Failed to create default data", err);
@@ -131,7 +119,7 @@ initialize: (userId: string) => {
         set({ data: defaultData, loading: false, loaded: true });
       }
     }, (error) => {
-      console.error("[PlannerStore] sync error:", error);
+      console.error("[PlannerStore] Sync error:", error);
       set({ loading: false, loaded: true });
     });
 
@@ -150,28 +138,17 @@ initialize: (userId: string) => {
     const { data, userId } = get();
     if (!data || !userId) return;
 
-    // 1. التحديث المحلي الفوري للشاشة (Optimistic UI)
+    // 1. Optimistic Update: Update UI instantly for a snappy experience
     const newData = { ...data, ...updates };
-    set({ data: newData, saving: true });
+    set({ data: newData });
 
     const docRef = doc(db, 'users', userId, 'weekly-planner', 'current');
-    const path = `users/${userId}/weekly-planner/current`;
-    const { isOnline } = useSyncStore.getState();
 
-    // 2. إرسال مباشر لفايربيس (بدون setTimeout)
-    if (isOnline) {
-      try {
-        // setDoc هنا مش بيعطل الشاشة، ده بيكتب في الـ Cache المحلي الأول
-        await setDoc(docRef, newData, { merge: true });
-        // الـ saving هيتحول لـ false أوتوماتيك من داخل الـ onSnapshot
-      } catch (err) {
-        console.error("[PlannerStore] Write failed, enqueuing...", err);
-        set({ saving: false });
-        useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
-      }
-    } else {
-      useSyncStore.getState().enqueueAction('WEEKLY_PLANNER_UPDATE', { path, data: newData });
-      set({ saving: false });
+    // 2. Direct Firestore Write: Firebase will automatically queue this if offline
+    try {
+      await setDoc(docRef, newData, { merge: true });
+    } catch (err) {
+      console.error("[PlannerStore] Write Error:", err);
     }
   },
 

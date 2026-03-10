@@ -1,24 +1,25 @@
 /**
  * ═══════════════════════════════════════════════════════════
- *  useHabitStore — Zustand store for Habit Management
+ * useHabitStore — Zustand store for Habit Management
  * ═══════════════════════════════════════════════════════════
  *
- *  Responsibilities:
- *  - CRUD operations for habits (Firestore subcollection: users/{uid}/habits/{habitId})
- *  - Daily habit entry logging (Firestore subcollection: users/{uid}/habits/{habitId}/logs/{date})
- *  - Grace day tracking & Streak computation
- *  - Mastery phase calculation
- *  - Real-time Firestore sync via onSnapshot
- *  - Offline action queuing via useSyncStore
+ * Responsibilities:
+ * - CRUD operations for habits (Firestore collection: users/{uid}/habits)
+ * - Daily habit entry logging stored safely within the habit document (history object)
+ * - Grace day tracking & Streak computation
+ * - Mastery phase calculation
+ * - Real-time Firestore sync via native onSnapshot (Offline-first approach)
+ * - Zero manual queueing (Relies entirely on Firebase's persistentLocalCache)
  */
 
 import { create } from 'zustand';
 import { 
-  collection, doc, setDoc, getDocs, getDocsFromServer, deleteDoc, 
-  onSnapshot, query, where, writeBatch, serverTimestamp 
+  collection, doc, setDoc, deleteDoc, 
+  onSnapshot, query, writeBatch, serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useSyncStore } from './useSyncStore';
+// NOTE: useSyncStore is purposely removed. Firebase handles offline queues automatically!
+
 import type {
   HabitRaw,
   HabitEntry,
@@ -29,7 +30,7 @@ import type {
 import type { GlobalHabitsAnalytics, WeakestHabitAnalysis } from '../types/analytics.types';
 
 /* ════════════════════════════════════════════════════════
- *  PURE HELPER FUNCTIONS (testable, no side effects)
+ * PURE HELPER FUNCTIONS (testable, no side effects)
  * ════════════════════════════════════════════════════════ */
 
 export function getLocalDateString(date: Date = new Date()): string {
@@ -351,14 +352,13 @@ function computeGlobalAnalytics(
 }
 
 /* ════════════════════════════════════════════════════════
- *  ZUSTAND STORE
+ * ZUSTAND STORE
  * ════════════════════════════════════════════════════════ */
 
 interface HabitStore {
   // ── Raw State ──
   habits: HabitRaw[];
   loaded: boolean;
-  saving: boolean;
   unsubscribeFn: (() => void) | null;
 
   // ── Derived Selectors ──
@@ -367,9 +367,7 @@ interface HabitStore {
   getAnalytics: () => GlobalHabitsAnalytics | null;
 
   // ── Firebase I/O ──
-  /** Initializes real-time listener for user's habits & logs */
   initSync: (uid: string) => void;
-  /** Cleans up listener */
   cleanup: () => void;
 
   // ── Mutations ──
@@ -388,7 +386,6 @@ interface HabitStore {
 export const useHabitStore = create<HabitStore>((set, get) => ({
   habits: [],
   loaded: false,
-  saving: false,
   unsubscribeFn: null,
 
   getHabitsWithStats: (): HabitWithStats[] => {
@@ -407,7 +404,6 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
         const aOrder = a.order ?? Infinity;
         const bOrder = b.order ?? Infinity;
         if (aOrder !== bOrder) return aOrder - bOrder;
-        // Fallback to name for stable sort
         return a.name.localeCompare(b.name);
       });
   },
@@ -425,42 +421,31 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
 
     set({ loaded: false });
 
-    // #region agent log
+    // Agent Log
     fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:initSync',message:'Habits initSync called',data:{uid},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     const habitsRef = collection(db, `users/${uid}/habits`);
-    const q = query(habitsRef); // Could add where("isHidden", "==", false) here if we never need to show hidden habits
+    const q = query(habitsRef);
 
-    // Attach real-time listener to habits
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      // #region agent log
+    // Attach real-time listener: Fetches habits AND their history efficiently in ONE read per doc.
+    const unsubscribe = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      // Agent Log
       fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_habits',message:'Habits snapshot',data:{docsCount:snapshot.docs.length},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      const habitsData: HabitRaw[] = [];
-
-      const promises = snapshot.docs.map(async (habitDoc) => {
-        const habit = habitDoc.data() as HabitRaw;
-        habit.id = habitDoc.id;
-        
-        const logsRef = collection(db, `users/${uid}/habits/${habitDoc.id}/logs`);
-        const logsSnapshot = await getDocs(logsRef);
-        
-        const history: Record<string, HabitEntry> = {};
-        logsSnapshot.forEach(logDoc => {
-          history[logDoc.id] = logDoc.data() as HabitEntry;
-        });
-        
-        habit.history = history;
-        habitsData.push(habit);
+      
+      const habitsData: HabitRaw[] = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          history: data.history || {}, // History is now embedded inside the habit document
+        } as HabitRaw;
       });
 
-      await Promise.all(promises);
       set({ habits: habitsData, loaded: true });
     }, (error) => {
-      // #region agent log
+      // Agent Log
       fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useHabitStore.ts:onSnapshot_error',message:'Habits onSnapshot error',data:{err:String(error?.message||error)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      
       console.error("[HabitStore] Real-time sync error:", error);
       set({ loaded: true });
     });
@@ -477,10 +462,9 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
   },
 
   addHabit: async (uid: string, newHabit) => {
-    const { isOnline } = useSyncStore.getState();
-    const habitId = Date.now().toString(); // Use timestamp as ID locally
+    const habitId = Date.now().toString(); // Local ID generation
     
-    // Optistic update
+    // 1. Optimistic update: Update UI instantly
     const habit: HabitRaw = {
       id: habitId,
       history: {},
@@ -488,54 +472,44 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     };
     set((state) => ({ habits: [...state.habits, habit] }));
 
+    // 2. Firestore write (Handles offline queuing automatically)
     const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
-    const payload = { ...newHabit, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    const payload = { ...newHabit, history: {}, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
 
-    if (isOnline) {
-      try {
-        await setDoc(habitRef, payload);
-      } catch (err) {
-        console.error("Failed to add habit", err);
-      }
-    } else {
-      useSyncStore.getState().enqueueAction('HABIT_ADD', { path: `users/${uid}/habits/${habitId}`, data: payload });
+    try {
+      await setDoc(habitRef, payload);
+    } catch (err) {
+      console.error("[HabitStore] Failed to add habit", err);
     }
   },
 
   updateHabit: async (uid: string, id: string, updates: Partial<HabitRaw>) => {
-    const { isOnline } = useSyncStore.getState();
-    
-    // Optistic update
+    // 1. Optimistic update
     set((state) => ({
       habits: state.habits.map((h) =>
         h.id === id ? { ...h, ...updates } : h
       ),
     }));
 
+    // 2. Firestore write
     const habitRef = doc(db, `users/${uid}/habits/${id}`);
     const payload = { ...updates, updatedAt: serverTimestamp() };
 
-    if (isOnline) {
-      try {
-        await setDoc(habitRef, payload, { merge: true });
-      } catch (err) {
-        console.error("Failed to update habit", err);
-      }
-    } else {
-       useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${id}`, data: payload });
+    try {
+      await setDoc(habitRef, payload, { merge: true });
+    } catch (err) {
+      console.error("[HabitStore] Failed to update habit", err);
     }
   },
 
   reorderHabits: async (uid: string, habitIds: string[]) => {
-    const { isOnline } = useSyncStore.getState();
-    
     // Create order mapping
     const orderUpdates: Record<string, number> = {};
     habitIds.forEach((id, index) => {
       orderUpdates[id] = index;
     });
 
-    // Optimistic update
+    // 1. Optimistic update
     set((state) => ({
       habits: state.habits.map((h) => ({
         ...h,
@@ -543,49 +517,33 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       })),
     }));
 
-    // Batch update in Firestore
-    if (isOnline) {
-      const batch = writeBatch(db);
-      habitIds.forEach((id, index) => {
-        const habitRef = doc(db, `users/${uid}/habits/${id}`);
-        batch.update(habitRef, { order: index, updatedAt: serverTimestamp() });
-      });
-      try {
-        await batch.commit();
-      } catch (err) {
-        console.error("Failed to reorder habits", err);
-      }
-    } else {
-      // For offline, enqueue individual updates
-      habitIds.forEach((id, index) => {
-        useSyncStore.getState().enqueueAction('HABIT_UPDATE', { 
-          path: `users/${uid}/habits/${id}`, 
-          data: { order: index, updatedAt: serverTimestamp() } 
-        });
-      });
+    // 2. Batch update in Firestore
+    const batch = writeBatch(db);
+    habitIds.forEach((id, index) => {
+      const habitRef = doc(db, `users/${uid}/habits/${id}`);
+      batch.update(habitRef, { order: index, updatedAt: serverTimestamp() });
+    });
+
+    try {
+      await batch.commit();
+    } catch (err) {
+      console.error("[HabitStore] Failed to reorder habits", err);
     }
   },
 
   deleteHabit: async (uid: string, id: string) => {
-    const { isOnline } = useSyncStore.getState();
-    
-    // Optistic update
+    // 1. Optimistic update
     set((state) => ({
       habits: state.habits.filter((h) => h.id !== id),
     }));
 
+    // 2. Firestore write
     const habitRef = doc(db, `users/${uid}/habits/${id}`);
 
-    if (isOnline) {
-      try {
-        await deleteDoc(habitRef);
-      } catch (err) {
-        console.error("Failed to delete habit", err);
-      }
-    } else {
-      // NOTE: useSyncStore would need a DELETE action type, 
-      // but for now we fallback to marking as hidden if offline
-      useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${id}`, data: { isHidden: true } });
+    try {
+      await deleteDoc(habitRef);
+    } catch (err) {
+      console.error("[HabitStore] Failed to delete habit", err);
     }
   },
 
@@ -595,9 +553,7 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
     dateStr: string,
     entryData: Partial<HabitEntry>
   ) => {
-    const { isOnline } = useSyncStore.getState();
-
-    // Optistic update
+    // 1. Optimistic update
     set((state) => ({
       habits: state.habits.map((h) => {
         if (h.id !== habitId) return h;
@@ -613,25 +569,16 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       }),
     }));
 
-    const logRef = doc(db, `users/${uid}/habits/${habitId}/logs/${dateStr}`);
+    // 2. Firestore write using dot notation to update ONLY the specific day in the history map
     const habitRef = doc(db, `users/${uid}/habits/${habitId}`);
-    const payload = { ...entryData, loggedAt: serverTimestamp() };
-
-    if (isOnline) {
-      try {
-        const batch = writeBatch(db);
-        // 1. Write the log entry
-        batch.set(logRef, payload, { merge: true });
-        // 2. Touch the parent habit so onSnapshot fires on other devices
-        batch.set(habitRef, { updatedAt: serverTimestamp() }, { merge: true });
-        await batch.commit();
-      } catch (err) {
-        console.error("Failed to log entry", err);
-      }
-    } else {
-      useSyncStore.getState().enqueueAction('HABIT_LOG_ENTRY', { path: `users/${uid}/habits/${habitId}/logs/${dateStr}`, data: payload });
-      // We also enqueue the parent update so it syncs later
-      useSyncStore.getState().enqueueAction('HABIT_UPDATE', { path: `users/${uid}/habits/${habitId}`, data: { updatedAt: new Date().toISOString() }});
+    
+    try {
+      await setDoc(habitRef, {
+        [`history.${dateStr}`]: { ...entryData, loggedAt: serverTimestamp() },
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error("[HabitStore] Failed to log entry", err);
     }
   },
 }));

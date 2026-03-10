@@ -1,18 +1,51 @@
 /**
  * ═══════════════════════════════════════════════════════════
- *  useFeatureStore — Zustand store for Feature Flags & RBAC
+ * useFeatureStore — Zustand store for Feature Flags & RBAC
  * ═══════════════════════════════════════════════════════════
  *
- *  Responsibilities:
- *  - Fetch global feature flags from Firestore `system_settings/features`
- *  - Store these flags in memory for instant synchronous checks
- *  - Provide a helper function `canAccessFeature` to evaluate permissions
+ * Responsibilities:
+ * - Fetch global feature flags from Firestore `system_settings/features`
+ * - Store these flags in memory for instant synchronous checks
+ * - Provide a robust, reactive way to check permissions across the app
  */
 
 import { create } from 'zustand';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { FeaturesDocument, FeatureKey, UserRole } from '../types/features';
+
+/* ─────────────── Pure Helper ─────────────── */
+
+/**
+ * Pure function to evaluate access. Extracted to allow reuse in both 
+ * non-reactive functions (like router guards) and reactive React Hooks.
+ */
+export function evaluateAccess(
+  features: FeaturesDocument | null,
+  loading: boolean,
+  featureName: FeatureKey,
+  userRole: UserRole
+): boolean {
+  // If still loading or no features fetched, err on the side of caution (deny access)
+  if (loading || !features) return false;
+
+  const config = features[featureName];
+
+  // If the feature isn't defined in the database, deny access by default
+  if (!config) return false;
+
+  // 1. Check primary kill switch (Global toggle)
+  if (!config.enabled) return false;
+
+  // 2. Check RBAC (Role-Based Access Control)
+  if (config.allowedRoles && config.allowedRoles.includes(userRole)) {
+    return true;
+  }
+
+  return false;
+}
+
+/* ─────────────── Store Interface ─────────────── */
 
 interface FeatureStore {
   // ── State ──
@@ -21,15 +54,14 @@ interface FeatureStore {
   unsubscribeFn: (() => void) | null;
 
   // ── Firestore I/O ──
-  /** Starts listening to the global feature flags document */
   initFeatureListener: () => void;
-  /** Cleans up the listener when no longer needed */
   cleanup: () => void;
 
   // ── Helpers ──
-  /** Evaluates if a given role has access to a specific feature */
   canAccessFeature: (featureName: FeatureKey, userRole: UserRole) => boolean;
 }
+
+/* ─────────────── Store Definition ─────────────── */
 
 export const useFeatureStore = create<FeatureStore>((set, get) => ({
   features: null,
@@ -39,22 +71,22 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
   initFeatureListener: () => {
     const { unsubscribeFn } = get();
     if (unsubscribeFn) {
-      unsubscribeFn(); // Clean up existing listener
+      unsubscribeFn(); // Clean up existing listener to prevent memory leaks
     }
 
     set({ loading: true });
 
     const featuresRef = doc(db, 'system_settings', 'features');
     
+    // Using includeMetadataChanges to ensure instant cache loading for PWAs/Offline
     const unsubscribe = onSnapshot(
       featuresRef,
+      { includeMetadataChanges: true },
       (docSnap) => {
         if (docSnap.exists()) {
           set({ features: docSnap.data() as FeaturesDocument, loading: false });
         } else {
-          // If document doesn't exist yet, we can default to an empty configuration
-          // or handle it gracefully. Here we just set features to an empty object.
-          console.warn('[FeatureStore] system_settings/features document not found.');
+          console.warn('[FeatureStore] system_settings/features document not found. Defaulting to empty.');
           set({ features: {} as FeaturesDocument, loading: false });
         }
       },
@@ -75,26 +107,34 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     }
   },
 
+  /**
+   * NOTE: Use this ONLY in standard JS functions (like utility files or outside React tree).
+   * Inside React components, use the `useFeatureAccess` hook below for proper reactivity!
+   */
   canAccessFeature: (featureName: FeatureKey, userRole: UserRole): boolean => {
     const { features, loading } = get();
-
-    // If still loading, err on the side of caution (deny access) or fallback.
-    // Usually, you might want to show a spinner in the component itself.
-    if (loading || !features) return false;
-
-    const config = features[featureName];
-
-    // If the feature isn't defined in the database, deny access by default.
-    if (!config) return false;
-
-    // 1. Check primary kill switch
-    if (!config.enabled) return false;
-
-    // 2. Check RBAC
-    if (config.allowedRoles && config.allowedRoles.includes(userRole)) {
-      return true;
-    }
-
-    return false;
+    return evaluateAccess(features, loading, featureName, userRole);
   },
 }));
+
+/* ─────────────── Reactive Custom Hook ─────────────── */
+
+/**
+ * Custom React Hook to safely and reactively check feature access inside components.
+ * This guarantees the component will re-render instantly if a feature flag changes in Firestore.
+ * * @example
+ * const isPro = useFeatureAccess('premium_analytics', user.role);
+ * if (!isPro) return <UpgradePrompt />;
+ */
+export function useFeatureAccess(featureName: FeatureKey, userRole: UserRole): boolean {
+  // Select only the specific feature config and the loading state to optimize re-renders
+  const featureConfig = useFeatureStore((state) => state.features?.[featureName]);
+  const loading = useFeatureStore((state) => state.loading);
+
+  // Fallback to evaluating with the current config
+  if (loading || !featureConfig) return false;
+  if (!featureConfig.enabled) return false;
+  if (featureConfig.allowedRoles && featureConfig.allowedRoles.includes(userRole)) return true;
+
+  return false;
+}

@@ -1,14 +1,13 @@
 /**
  * ═══════════════════════════════════════════════════════════
- *  useAuthStore — Zustand store for Firebase Authentication
+ * useAuthStore — Zustand store for Firebase Authentication
  * ═══════════════════════════════════════════════════════════
  *
- *  Replaces: AuthContext.jsx
- *
- *  Responsibilities:
- *  - Listen to Firebase auth state changes
- *  - Provide login/logout actions
- *  - Expose the current user to all components
+ * Responsibilities:
+ * - Listen to Firebase auth state changes (onAuthStateChanged)
+ * - Provide login/logout/signup actions
+ * - Auto-create Firestore user documents for new Google sign-ins
+ * - Expose the current user to all components seamlessly
  */
 
 import { create } from 'zustand';
@@ -20,11 +19,9 @@ import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut,
-  setPersistence,
-  browserLocalPersistence,
   type User,
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { FirebaseAuthUser } from '../types/user.types';
 import type { UserRole } from '../types/features';
@@ -32,47 +29,23 @@ import type { UserRole } from '../types/features';
 /* ─────────────── Store Interface ─────────────── */
 
 interface AuthStore {
-  /** Current authenticated user (null = not logged in) */
   user: FirebaseAuthUser | null;
-
-  /** Whether we're still checking initial auth state */
   loading: boolean;
-
-  /** Last auth error message */
   error: string | null;
-
-  /** Timestamp of last verified user activity */
   lastActiveAt: number | null;
 
-  /** Sign in with email + password */
   loginWithEmail: (email: string, password: string) => Promise<void>;
-
-  /** Create account with email + password */
   signUpWithEmail: (email: string, password: string) => Promise<void>;
-
-  /** Sign in with Google popup */
   loginWithGoogle: () => Promise<void>;
-
-  /** Sign out and clear user state */
   logout: () => Promise<void>;
-
-  /** Clear any error state */
   clearError: () => void;
-
-  /**
-   * Initialize the auth state listener.
-   * Call this ONCE in the root component (App.tsx).
-   * Returns an unsubscribe function.
-   */
   initAuthListener: () => () => void;
 }
 
-/* ─────────────── Helper: Firebase User → Our Type ─────────────── */
+/* ─────────────── Helpers ─────────────── */
 
 /**
  * Maps a Firebase Auth User object to our lean FirebaseAuthUser interface.
- * This prevents storing the entire Firebase User object (which is mutable
- * and contains methods) in our Zustand state.
  */
 function serializeUser(fbUser: User, role: UserRole): FirebaseAuthUser {
   return {
@@ -85,145 +58,148 @@ function serializeUser(fbUser: User, role: UserRole): FirebaseAuthUser {
 }
 
 /**
- * Helper to fetch a user's role from their Firestore profile document.
+ * Fetches a user's role from Firestore. 
+ * If the document doesn't exist (e.g., new Google login), it creates a default one.
  */
-async function fetchUserRole(uid: string): Promise<UserRole> {
+async function fetchOrCreateUserProfile(fbUser: User): Promise<UserRole> {
+  const userRef = doc(db, 'users', fbUser.uid);
+  
   try {
-    const userDoc = await getDoc(doc(db, 'users', uid));
+    const userDoc = await getDoc(userRef);
     if (userDoc.exists()) {
       const data = userDoc.data();
-      if (data.role === 'admin' || data.role === 'tester') {
-        return data.role as UserRole;
-      }
+      return (data.role === 'admin' || data.role === 'tester') ? data.role : 'user';
+    } else {
+      // CRITICAL FIX: Auto-create document for new users (especially Google sign-ups)
+      await setDoc(userRef, {
+        email: fbUser.email,
+        displayName: fbUser.displayName,
+        photoURL: fbUser.photoURL,
+        role: 'user',
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+      return 'user';
     }
   } catch (err) {
-    console.error('[AuthStore] Failed to fetch user role:', err);
+    console.error('[AuthStore] Failed to fetch/create user profile:', err);
+    return 'user';
   }
-  return 'user';
 }
 
 /* ─────────────── Store Definition ─────────────── */
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // ── Initial State ──
-      // loading defaults to false since we trust persisted user cache instantly
       user: null,
-      loading: false,
+      loading: true, // Start true until Firebase verifies the persisted state
       error: null,
       lastActiveAt: null,
 
       // ── Actions ──
 
-  loginWithEmail: async (email: string, password: string) => {
-    set({ loading: true, error: null });
-    try {
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const role = await fetchUserRole(credential.user.uid);
-      set({ 
-        user: serializeUser(credential.user, role), 
-        lastActiveAt: Date.now(),
-        loading: false 
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Login failed';
-      set({ error: message, loading: false });
-      throw err; // Re-throw so calling components can handle it
-    }
-  },
+      loginWithEmail: async (email: string, password: string) => {
+        set({ loading: true, error: null });
+        try {
+          const credential = await signInWithEmailAndPassword(auth, email, password);
+          const role = await fetchOrCreateUserProfile(credential.user);
+          set({ 
+            user: serializeUser(credential.user, role), 
+            lastActiveAt: Date.now(),
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Login failed', loading: false });
+          throw err;
+        }
+      },
 
-  signUpWithEmail: async (email: string, password: string) => {
-    set({ loading: true, error: null });
-    try {
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
-      set({ 
-        user: serializeUser(credential.user, 'user'), 
-        lastActiveAt: Date.now(),
-        loading: false 
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sign up failed';
-      set({ error: message, loading: false });
-      throw err; // Re-throw so calling components can handle it
-    }
-  },
+      signUpWithEmail: async (email: string, password: string) => {
+        set({ loading: true, error: null });
+        try {
+          const credential = await createUserWithEmailAndPassword(auth, email, password);
+          // Create the user document immediately upon signup
+          const role = await fetchOrCreateUserProfile(credential.user);
+          set({ 
+            user: serializeUser(credential.user, role), 
+            lastActiveAt: Date.now(),
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Sign up failed', loading: false });
+          throw err;
+        }
+      },
 
-  loginWithGoogle: async () => {
-    set({ loading: true, error: null });
-    try {
-      const provider = new GoogleAuthProvider();
-      const credential = await signInWithPopup(auth, provider);
-      const role = await fetchUserRole(credential.user.uid);
-      set({ 
-        user: serializeUser(credential.user, role), 
-        lastActiveAt: Date.now(),
-        loading: false 
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Google login failed';
-      set({ error: message, loading: false });
-      throw err; // Re-throw so calling components can handle it
-    }
-  },
+      loginWithGoogle: async () => {
+        set({ loading: true, error: null });
+        try {
+          const provider = new GoogleAuthProvider();
+          const credential = await signInWithPopup(auth, provider);
+          // Will fetch role OR create a new DB document if they are brand new
+          const role = await fetchOrCreateUserProfile(credential.user);
+          set({ 
+            user: serializeUser(credential.user, role), 
+            lastActiveAt: Date.now(),
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message || 'Google login failed', loading: false });
+          throw err;
+        }
+      },
 
-  logout: async () => {
-    try {
-      await signOut(auth);
-      set({ user: null, error: null });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Logout failed';
-      set({ error: message });
-    }
-  },
+      logout: async () => {
+        try {
+          await signOut(auth);
+          set({ user: null, error: null, lastActiveAt: null });
+        } catch (err: any) {
+          set({ error: err.message || 'Logout failed' });
+        }
+      },
 
-  clearError: () => set({ error: null }),
+      clearError: () => set({ error: null }),
 
-  initAuthListener: () => {
-    /**
-     * Enforce local persistence first: this guarantees the login session
-     * survives page refreshes and browser restarts.
-     */
-    setPersistence(auth, browserLocalPersistence).catch((err) => {
-      console.error('[AuthStore] Failed to set auth persistence:', err);
-    });
+      initAuthListener: () => {
+        const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+        const { lastActiveAt } = get();
+        
+        // ── 7-Day Inactivity Check ──
+        if (lastActiveAt && (Date.now() - lastActiveAt > SEVEN_DAYS_MS)) {
+          console.warn('[AuthStore] Session expired due to inactivity.');
+          signOut(auth).catch(console.error);
+          set({ user: null, lastActiveAt: null, error: 'Session expired. Please log in again.', loading: false });
+        }
 
-    // ── 7-Day Inactivity Check on Boot ──
-    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-    const { lastActiveAt } = useAuthStore.getState();
-    
-    if (lastActiveAt && (Date.now() - lastActiveAt > SEVEN_DAYS_MS)) {
-      console.warn('[AuthStore] Session expired due to 7 days of inactivity.');
-      signOut(auth).catch(console.error);
-      set({ user: null, lastActiveAt: null, error: 'Session expired. Please log in again.' });
-      // We don't return early because we still want to set up the listener
-    }
-
-    /**
-     * Subscribe to Firebase auth state changes.
-     * This fires immediately with the initial state and then
-     * on every subsequent login/logout.
-     */
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      if (fbUser) {
-        const role = await fetchUserRole(fbUser.uid);
-        set({ 
-          user: serializeUser(fbUser, role), 
-          lastActiveAt: Date.now(), // Refresh timestamp on successful background verify
-          loading: false 
+        /**
+         * Subscribe to Firebase auth state changes.
+         */
+        const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+          if (fbUser) {
+            // User is verified by Firebase Server
+            const role = await fetchOrCreateUserProfile(fbUser);
+            set({ 
+              user: serializeUser(fbUser, role), 
+              lastActiveAt: Date.now(), 
+              loading: false 
+            });
+          } else {
+            // User is logged out
+            set({ user: null, lastActiveAt: null, loading: false });
+          }
         });
-      } else {
-        set({ user: null, lastActiveAt: null, loading: false });
-      }
-    });
 
-    return unsubscribe;
-  },
-}),
-{
-  name: 'herizon-auth-cache', // unique name for localStorage
-  partialize: (state) => ({ 
-    user: state.user,
-    lastActiveAt: state.lastActiveAt
-  }), // persist user and timestamp
-}));
+        return unsubscribe;
+      },
+    }),
+    {
+      name: 'herizon-auth-cache', // unique name for localStorage
+      partialize: (state) => ({ 
+        user: state.user,
+        lastActiveAt: state.lastActiveAt
+      }),
+    }
+  )
+);

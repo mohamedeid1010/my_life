@@ -66,6 +66,15 @@ export default function WeeklyPlanner() {
   // الاعتماد على تاريخ اليوم كمرجع دائم
   const [today] = useState(new Date());
 
+  // دالة التحقق من أن التاريخ هو اليوم الحالي
+  const isToday = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+
   // ==========================================
   // النظام التلقائي الذكي لحساب التواريخ
   // ==========================================
@@ -609,11 +618,26 @@ export default function WeeklyPlanner() {
 
               // جلب التاريخ المخصص لهذا اليوم من النظام التلقائي
               const autoDate = weekData.assignedDates[day.id];
+              const isTodayCard = isToday(autoDate);
 
               return (
-                <div key={day.id} className={`glass-card p-5 flex flex-col h-[500px] transition-all duration-500 ${dayPercent === 100 && dayStats.total > 0 ? 'border-[#10b981]/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : ''}`} onDragOver={e => e.preventDefault()} onDrop={e => handleDropOnDay(e, day.id)}>
+                <div key={day.id} className={`glass-card p-5 flex flex-col h-[500px] transition-all duration-500 relative ${
+                  isTodayCard 
+                    ? 'border-2 border-[#06b6d4] !shadow-[0_0_20px_rgba(6,182,212,0.5),0_0_40px_rgba(6,182,212,0.2)] scale-[1.02] z-10' 
+                    : dayPercent === 100 && dayStats.total > 0 
+                      ? 'border-[#10b981]/40 shadow-[0_0_20px_rgba(16,185,129,0.15)]' 
+                      : ''
+                }`} onDragOver={e => e.preventDefault()} onDrop={e => handleDropOnDay(e, day.id)}>
                   <div className="flex justify-between items-center mb-4 border-b border-[var(--border-glass)] pb-3">
-                    <h2 className={`text-xl font-bold uppercase tracking-wide transition-colors ${dayPercent === 100 && dayStats.total > 0 ? 'text-[#10b981]' : 'text-[var(--accent-primary)]'}`}>{day.name}</h2>
+                    <h2 className={`text-xl font-bold uppercase tracking-wide transition-colors ${
+                      isTodayCard 
+                        ? 'text-[#06b6d4]' 
+                        : dayPercent === 100 && dayStats.total > 0 
+                          ? 'text-[#10b981]' 
+                          : 'text-[var(--accent-primary)]'
+                    }`}>
+                      {day.name}
+                    </h2>
 
                     {/* عرض التاريخ التلقائي هنا بدلاً من الإدخال اليدوي */}
                     <div className="flex flex-col items-end">

@@ -1,21 +1,22 @@
 /**
  * ═══════════════════════════════════════════════════════════
- *  useGymStore — Zustand store for Gym Tracking
+ * useGymStore — Zustand store for Gym Tracking
  * ═══════════════════════════════════════════════════════════
  *
- *  Refactored for Elite Subcollection Architecture:
- *  - Profile Data (targetDays, weights): users/{uid}/gym_profile/main
- *  - Daily Workout Logs: users/{uid}/gym_logs/{dateStr}
+ * Responsibilities:
+ * - Profile Data (targetDays, weights): users/{uid}/gym_profile/main
+ * - Daily Workout Logs: users/{uid}/gym_logs/{dateStr}
+ * - Advanced Stats, Achievements, and Streak computations
+ * - Native Firebase offline caching & synchronization (Zero manual queueing)
  */
 
 import { create } from 'zustand';
 import { 
   collection, doc, setDoc, deleteDoc, 
-  onSnapshot, query, serverTimestamp, 
-  getDocFromServer, getDocsFromServer 
+  onSnapshot, query, serverTimestamp 
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useSyncStore } from './useSyncStore';
+
 import type {
   GymWeekRaw,
   GymWeekEnriched,
@@ -30,7 +31,7 @@ import type {
 import type { WorkoutSystemId } from '../types/workout-systems.types';
 
 /* ════════════════════════════════════════════════════════
- *  CONSTANTS & PURE HELPERS
+ * CONSTANTS & PURE HELPERS
  * ════════════════════════════════════════════════════════ */
 
 const YEAR_START = new Date(2026, 0, 3); // Jan 3, 2026 (Saturday)
@@ -345,11 +346,10 @@ function computeStats(enrichedData: GymWeekEnriched[]): GymStats {
 }
 
 /* ════════════════════════════════════════════════════════
- *  ZUSTAND STORE
+ * ZUSTAND STORE
  * ════════════════════════════════════════════════════════ */
 
 interface GymStore {
-  // ── State ──
   data: GymWeekRaw[];
   targetDays: number;
   workoutSystem: WorkoutSystemId;
@@ -358,15 +358,12 @@ interface GymStore {
   unsubscribeProfile: (() => void) | null;
   unsubscribeLogs: (() => void) | null;
 
-  // ── Selectors ──
   getEnrichedData: () => GymWeekEnriched[];
   getStats: () => GymStats;
 
-  // ── Sync Lifecycle ──
   initSync: (uid: string) => void;
   cleanup: () => void;
 
-  // ── Mutations ──
   setTargetDays: (uid: string, days: number) => Promise<void>;
   setWorkoutSystem: (uid: string, system: WorkoutSystemId) => Promise<void>;
   updateWeight: (uid: string, weekIndex: number, value: string) => Promise<void>;
@@ -406,22 +403,14 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
     set({ loaded: false });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:initSync',message:'Gym initSync called',data:{uid},hypothesisId:'B',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     const profileRef = doc(db, `users/${uid}/gym_profile/main`);
     
-    // 1. Subscribe to profile/metrics real-time
-    const unsubProfile = onSnapshot(profileRef, (docSnap) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:onSnapshot_profile',message:'Gym profile snapshot',data:{exists:docSnap.exists(),keys:docSnap.exists()?Object.keys(docSnap.data()||{}):[]},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+    // 1. Subscribe to profile/metrics real-time with Metadata changes enabled
+    const unsubProfile = onSnapshot(profileRef, { includeMetadataChanges: true }, (docSnap) => {
       if (docSnap.exists()) {
         const d = docSnap.data();
         set({ targetDays: d.targetDays || 5, workoutSystem: d.workoutSystem || 'ppl' });
         
-        // Reconstruct Weekly Weights and BodyFats into the 52-week array
         set((state) => {
           const newData = [...state.data];
           const weights = d.weeklyWeights || {};
@@ -435,27 +424,20 @@ export const useGymStore = create<GymStore>((set, get) => ({
         });
       }
     }, (err: Error) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:onSnapshot_profile_error',message:'Gym profile snapshot error',data:{err:String(err?.message||err)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      console.error("[GymStore] Profile sync error:", err);
     });
 
     // 2. Subscribe to logs subcollection real-time
     const logsRef = collection(db, `users/${uid}/gym_logs`);
     const q = query(logsRef);
-    const unsubLogs = onSnapshot(q, (snapshot) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:onSnapshot_logs',message:'Gym logs snapshot',data:{docsCount:snapshot.docs.length},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+    const unsubLogs = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
       set((state) => {
-        // Start from a fresh template but copy over the weights/fats from current state
         const newData = generateInitialData();
         for (let i = 0; i < 52; i++) {
           newData[i].weight = state.data[i].weight;
           newData[i].bodyFat = state.data[i].bodyFat;
         }
 
-        // Apply every log entry to the correct week/day
         snapshot.docs.forEach((logDoc) => {
           const l = logDoc.data();
           const logDate = new Date(l.dateStr);
@@ -476,9 +458,7 @@ export const useGymStore = create<GymStore>((set, get) => ({
         return { data: newData, loaded: true };
       });
     }, (err: Error) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:onSnapshot_logs_error',message:'Gym logs snapshot error',data:{err:String(err?.message||err)},hypothesisId:'C',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
+      console.error("[GymStore] Logs sync error:", err);
     });
 
     set({ unsubscribeProfile: unsubProfile, unsubscribeLogs: unsubLogs });
@@ -492,37 +472,27 @@ export const useGymStore = create<GymStore>((set, get) => ({
   },
 
   setTargetDays: async (uid: string, days: number) => {
-    const { isOnline } = useSyncStore.getState();
+    // Optimistic Update
     set({ targetDays: days });
     
-    if (isOnline) {
-      try {
-        await setDoc(doc(db, `users/${uid}/gym_profile/main`), { targetDays: days }, { merge: true });
-      } catch (e: unknown) {
-        // #region agent log
-        fetch('http://127.0.0.1:7844/ingest/b473e0b7-e95c-427a-9cb2-ea7d4d9c5da5',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'e5e788'},body:JSON.stringify({sessionId:'e5e788',location:'useGymStore.ts:setTargetDays',message:'setDoc failed',data:{err:String((e as Error).message)},hypothesisId:'D',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
-        throw e;
-      }
-    } else {
-      useSyncStore.getState().enqueueAction('PREFERENCES_UPDATE', { path: `users/${uid}/gym_profile/main`, data: { targetDays: days } });
+    // Direct Firestore Write (Firebase handles offline caching automatically)
+    try {
+      await setDoc(doc(db, `users/${uid}/gym_profile/main`), { targetDays: days }, { merge: true });
+    } catch (e) {
+      console.error("[GymStore] Failed to update target days:", e);
     }
   },
 
   setWorkoutSystem: async (uid: string, system: WorkoutSystemId) => {
-    const { isOnline } = useSyncStore.getState();
     set({ workoutSystem: system });
-    
-    if (isOnline) {
+    try {
       await setDoc(doc(db, `users/${uid}/gym_profile/main`), { workoutSystem: system }, { merge: true });
-    } else {
-      useSyncStore.getState().enqueueAction('PREFERENCES_UPDATE', { path: `users/${uid}/gym_profile/main`, data: { workoutSystem: system } });
+    } catch (e) {
+      console.error("[GymStore] Failed to update workout system:", e);
     }
   },
 
   updateWeight: async (uid: string, weekIndex: number, value: string) => {
-    const { isOnline } = useSyncStore.getState();
-    
     set((state) => {
       const newData = [...state.data];
       newData[weekIndex] = { ...newData[weekIndex], weight: value };
@@ -530,16 +500,14 @@ export const useGymStore = create<GymStore>((set, get) => ({
     });
 
     const payload = { weeklyWeights: { [weekIndex]: value } };
-    if (isOnline) {
+    try {
       await setDoc(doc(db, `users/${uid}/gym_profile/main`), payload, { merge: true });
-    } else {
-      useSyncStore.getState().enqueueAction('GYM_UPDATE_WEIGHT', { path: `users/${uid}/gym_profile/main`, data: payload });
+    } catch (e) {
+      console.error("[GymStore] Failed to update weight:", e);
     }
   },
 
   updateBodyFat: async (uid: string, weekIndex: number, value: string) => {
-    const { isOnline } = useSyncStore.getState();
-    
     set((state) => {
       const newData = [...state.data];
       newData[weekIndex] = { ...newData[weekIndex], bodyFat: value };
@@ -547,15 +515,14 @@ export const useGymStore = create<GymStore>((set, get) => ({
     });
 
     const payload = { weeklyBodyFats: { [weekIndex]: value } };
-    if (isOnline) {
+    try {
       await setDoc(doc(db, `users/${uid}/gym_profile/main`), payload, { merge: true });
-    } else {
-      useSyncStore.getState().enqueueAction('GYM_UPDATE_BODY_FAT', { path: `users/${uid}/gym_profile/main`, data: payload });
+    } catch (e) {
+      console.error("[GymStore] Failed to update body fat:", e);
     }
   },
 
   toggleDay: async (uid: string, weekIndex: number, dayIndex: number) => {
-    const { isOnline } = useSyncStore.getState();
     let isDone = false;
 
     set((state) => {
@@ -570,36 +537,24 @@ export const useGymStore = create<GymStore>((set, get) => ({
 
     const d = getDateForIndex(weekIndex, dayIndex);
     const dateStr = getLocalDateString(d);
-    
-    // Write directly to log document
     const logRef = doc(db, `users/${uid}/gym_logs/${dateStr}`);
     
-    if (isDone) {
-      const payload = { dateStr, isDone: true, loggedAt: serverTimestamp() };
-      if (isOnline) {
-        await setDoc(logRef, payload, { merge: true });
+    try {
+      if (isDone) {
+        await setDoc(logRef, { dateStr, isDone: true, loggedAt: serverTimestamp() }, { merge: true });
       } else {
-        useSyncStore.getState().enqueueAction('GYM_TOGGLE_DAY', { path: `users/${uid}/gym_logs/${dateStr}`, data: payload });
-      }
-    } else {
-      // If toggling off, either delete doc entirely or mark as isDone = false if we want to preserve session log. 
-      // For simplicity matching old logic, un-toggling destroys the implicit workout flag.
-      // Easiest is to set isDone = false so we keep session notes if they exist.
-      if (isOnline) {
         await setDoc(logRef, { isDone: false }, { merge: true });
-      } else {
-        useSyncStore.getState().enqueueAction('GYM_TOGGLE_DAY', { path: `users/${uid}/gym_logs/${dateStr}`, data: { isDone: false } });
       }
+    } catch (e) {
+      console.error("[GymStore] Failed to toggle day:", e);
     }
   },
 
   updateSession: async (uid: string, weekIndex: number, dayIndex: number, sessionData: GymSession) => {
-    const { isOnline } = useSyncStore.getState();
-    
     set((state) => {
       const newData = [...state.data];
       newData[weekIndex].sessions = { ...newData[weekIndex].sessions, [dayIndex]: sessionData };
-      newData[weekIndex].days = newData[weekIndex].days.map((d, i) => (i === dayIndex ? true : d)); // Auto-toggle day to true
+      newData[weekIndex].days = newData[weekIndex].days.map((d, i) => (i === dayIndex ? true : d)); 
       return { data: newData };
     });
 
@@ -609,22 +564,20 @@ export const useGymStore = create<GymStore>((set, get) => ({
     
     const payload = { dateStr, isDone: true, session: sessionData, loggedAt: serverTimestamp() };
 
-    if (isOnline) {
+    try {
       await setDoc(logRef, payload, { merge: true });
-    } else {
-      useSyncStore.getState().enqueueAction('GYM_UPDATE_SESSION', { path: `users/${uid}/gym_logs/${dateStr}`, data: payload });
+    } catch (e) {
+      console.error("[GymStore] Failed to update session:", e);
     }
   },
 
   deleteSession: async (uid: string, weekIndex: number, dayIndex: number) => {
-    const { isOnline } = useSyncStore.getState();
-    
     set((state) => {
       const newData = [...state.data];
       const newSessions = { ...newData[weekIndex].sessions };
       delete newSessions[dayIndex.toString()];
       newData[weekIndex].sessions = newSessions;
-      newData[weekIndex].days = newData[weekIndex].days.map((d, i) => (i === dayIndex ? false : d)); // Auto-toggle day to false
+      newData[weekIndex].days = newData[weekIndex].days.map((d, i) => (i === dayIndex ? false : d)); 
       return { data: newData };
     });
 
@@ -632,10 +585,10 @@ export const useGymStore = create<GymStore>((set, get) => ({
     const dateStr = getLocalDateString(d);
     const logRef = doc(db, `users/${uid}/gym_logs/${dateStr}`);
 
-    if (isOnline) {
+    try {
       await deleteDoc(logRef);
-    } else {
-      useSyncStore.getState().enqueueAction('GYM_DELETE_SESSION', { path: `users/${uid}/gym_logs/${dateStr}`, payload: null });
+    } catch (e) {
+      console.error("[GymStore] Failed to delete session:", e);
     }
   },
 

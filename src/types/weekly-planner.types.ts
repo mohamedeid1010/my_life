@@ -2,6 +2,8 @@ export interface MasterTask {
   id: string;
   text: string;
   categoryId: string;
+  /** Optional: if set, this task was scheduled to this day when created */
+  targetDayId?: string;
 }
 
 export interface DayTask {
@@ -9,6 +11,8 @@ export interface DayTask {
   masterId: string | null;
   text: string;
   done: boolean;
+  /** Explicit display order within the day */
+  order?: number;
 }
 
 export interface DayData {

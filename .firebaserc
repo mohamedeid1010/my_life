@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "my-life-3519c"
+    "default": "my-life-3519c",
+    "dev": "my-life-3519c",
+    "production": "YOUR_PROD_PROJECT_ID"
   }
 }

@@ -3,34 +3,83 @@
  *  Firebase Configuration — Modular SDK v10+
  * ═══════════════════════════════════════════════════════════
  *
- *  Initializes the Firebase app, Auth, and Firestore services.
+ *  Credentials are loaded exclusively from Vite environment
+ *  variables. NO hardcoded fallbacks — if a variable is
+ *  missing the app fails fast with a clear error message.
  *
- *  Config values are read from Vite environment variables
- *  (VITE_FIREBASE_*) with hardcoded fallbacks so the app
- *  works out-of-the-box without a .env file.
+ *  .env.development  →  used by `npm run dev`
+ *  .env.production   →  used by `npm run build`
+ *
+ *  See .env.example for the full list of required variables.
+ * ═══════════════════════════════════════════════════════════
  */
 
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { 
-  getFirestore, 
-  initializeFirestore, 
+import {
+  getFirestore,
+  initializeFirestore,
   persistentLocalCache,
-  persistentMultipleTabManager
+  persistentMultipleTabManager,
 } from 'firebase/firestore';
 
 
-/* ─────────────── Firebase Configuration ─────────────── */
+/* ─────────────── Environment Guard ─────────────── */
+
+const REQUIRED_VARS = [
+  'VITE_FIREBASE_API_KEY',
+  'VITE_FIREBASE_AUTH_DOMAIN',
+  'VITE_FIREBASE_PROJECT_ID',
+  'VITE_FIREBASE_STORAGE_BUCKET',
+  'VITE_FIREBASE_MESSAGING_SENDER_ID',
+  'VITE_FIREBASE_APP_ID',
+];
+
+const missing = REQUIRED_VARS.filter((key) => !import.meta.env[key]);
+if (missing.length > 0) {
+  throw new Error(
+    `\n❌ Horizon Firebase: Missing required environment variables:\n` +
+    missing.map((k) => `   → ${k}`).join('\n') +
+    `\n\n` +
+    `Make sure you have a .env.development file (for dev) or .env.production\n` +
+    `file (for builds). Copy .env.example and fill in your Firebase credentials.\n`
+  );
+}
+
+
+/* ─────────────── Firebase Configuration ─────────── */
 
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || "AIzaSyAWPGftVLRq_3y7d4ABOtAUaWMg5nF_QXM",
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || "my-life-3519c.firebaseapp.com",
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || "my-life-3519c",
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || "my-life-3519c.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "628407543082",
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || "1:628407543082:web:e281446795ab10b333aa53",
-  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID     || "G-GBGK8SWXDL",
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId:     import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
+
+
+/* ─────────────── Startup Banner ─────────────── */
+
+const isProduction = import.meta.env.PROD;
+const envLabel     = isProduction ? '🚀 PRODUCTION' : '🛠  DEV';
+const envStyle     = isProduction
+  ? 'color: #ff4444; font-weight: bold;'
+  : 'color: #00cc88; font-weight: bold;';
+
+console.log(
+  `%c[Horizon Firebase] ${envLabel} — Project: ${firebaseConfig.projectId}`,
+  envStyle
+);
+
+if (isProduction) {
+  console.warn(
+    '[Horizon Firebase] ⚠️  Connected to PRODUCTION Firestore. ' +
+    'All reads/writes affect real user data.'
+  );
+}
+
 
 /* ─────────────── Initialize Services ─────────────── */
 
@@ -41,40 +90,37 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 /**
- * Cloud Firestore instance.
- * `experimentalAutoDetectLongPolling` is enabled to improve
- * reliability behind corporate proxies and restrictive networks.
+ * Cloud Firestore instance — offline-first with persistent cache.
+ * `experimentalAutoDetectLongPolling` improves reliability behind
+ * corporate proxies and restrictive networks.
  */
 const db = (() => {
-  const DB_ID = "default";
+  const DB_ID = 'default';
   try {
-    // Attempt to initialize with offline persistence immediately.
-    // This provides bulletproof caching across browser reloads.
-    const instance = initializeFirestore(app, {
+    return initializeFirestore(app, {
       experimentalAutoDetectLongPolling: true,
       localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      })
-    }, DB_ID); // Your project's database named "default"
-    return instance;
+        tabManager: persistentMultipleTabManager(),
+      }),
+    }, DB_ID);
   } catch (err) {
-    // If it throws an error containing 'already-initialized' (typical in Vite HMR),
-    // we safely fallback to retrieving the existing instance.
+    // Vite HMR re-runs this module — the app is already initialized.
+    // Safely retrieve the existing Firestore instance.
     if (err.message?.includes('already-initialized') || err.code === 'failed-precondition') {
       try {
         return getFirestore(app, DB_ID);
       } catch (innerErr) {
-        console.warn('Fallback getFirestore failed:', innerErr);
+        console.warn('[Horizon Firebase] Fallback getFirestore failed:', innerErr);
       }
     }
-    
-    console.error('Firestore initialization with cache failed, falling back to default:', err);
+    console.error('[Horizon Firebase] Firestore init failed:', err);
+    // Last resort: initialize without explicit DB ID
     return initializeFirestore(app, {
       experimentalAutoDetectLongPolling: true,
       localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager()
-      })
-    }, DB_ID);
+        tabManager: persistentMultipleTabManager(),
+      }),
+    });
   }
 })();
 

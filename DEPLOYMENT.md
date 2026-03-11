@@ -7,6 +7,18 @@
 
 ---
 
+## 🌍 Dev vs Production
+
+|                 | Dev                    | Prod                |
+| --------------- | ---------------------- | ------------------- |
+| **أمر التشغيل** | `npm run dev`          | `npm run build`     |
+| **ملف الـ env** | `.env.development`     | `.env.production`   |
+| **متى تستخدمه** | أثناء البرمجة والتجربة | لما تنشر على الموقع |
+
+> لو عندك مشروع Firebase منفصل للـ prod: افتح `.env.production` وغيّر الـ credentials، ثم اعمل `npm run build && firebase deploy`.
+
+---
+
 ## خطوات التحديث
 
 ### 1. عدّل الكود
@@ -54,6 +66,24 @@ git add -A && git commit -m "weekly planner v2 fix bug with migration and add ne
 | `git log --oneline`              | عرض كل النسخ المحفوظة |
 | `git checkout <hash>`            | الرجوع لنسخة قديمة    |
 | `git checkout main`              | الرجوع للنسخة الأخيرة |
+
+---
+
+## 🔧 صيانة دورية
+
+### تحديث Firebase CLI
+
+لو ظهرت رسالة `Update available X.X.X → X.X.X` بعد الـ deploy:
+
+```bash
+npm install -g firebase-tools
+```
+
+ثم تحقق من النسخة:
+
+```bash
+firebase --version
+```
 
 ---
 

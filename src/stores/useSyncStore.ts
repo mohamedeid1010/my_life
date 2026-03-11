@@ -11,6 +11,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 /* ─────────────── Store Interface ─────────────── */
 
@@ -35,7 +36,9 @@ interface SyncStore {
 
 /* ─────────────── Store Definition ─────────────── */
 
-export const useSyncStore = create<SyncStore>((set, get) => ({
+export const useSyncStore = create<SyncStore>()(
+  persist(
+    (set, get) => ({
   // ── Initial State ──
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   pendingActions: [],
@@ -106,4 +109,12 @@ export const useSyncStore = create<SyncStore>((set, get) => ({
       }
     }
   },
-}));
+    }),
+    {
+      name: 'herizon-sync-store',
+      partialize: (state) => ({
+        pendingActions: state.pendingActions,
+      }),
+    }
+  )
+);

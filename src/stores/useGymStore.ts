@@ -11,6 +11,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { 
   collection, doc, setDoc, deleteDoc, 
   onSnapshot, query, serverTimestamp 
@@ -375,7 +376,9 @@ interface GymStore {
   markTodayComplete: (uid: string) => Promise<void>;
 }
 
-export const useGymStore = create<GymStore>((set, get) => ({
+export const useGymStore = create<GymStore>()(
+  persist(
+    (set, get) => ({
   data: generateInitialData(),
   targetDays: 5,
   workoutSystem: 'ppl' as WorkoutSystemId,
@@ -598,4 +601,14 @@ export const useGymStore = create<GymStore>((set, get) => ({
       await get().toggleDay(uid, stats.todayWeekIdx, stats.todayDayIdx);
     }
   },
-}));
+    }),
+    {
+      name: 'herizon-gym-store',
+      partialize: (state) => ({
+        data: state.data,
+        targetDays: state.targetDays,
+        workoutSystem: state.workoutSystem,
+      }),
+    }
+  )
+);

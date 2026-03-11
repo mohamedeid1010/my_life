@@ -14,6 +14,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { doc, setDoc, getDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -157,7 +158,9 @@ interface WeeklyPlannerStore {
 
 /* ─────────────── Store Implementation ─────────────── */
 
-export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
+export const useWeeklyPlannerStore = create<WeeklyPlannerStore>()(
+  persist(
+    (set, get) => ({
   data: null,
   loading: false,
   loaded: false,
@@ -239,12 +242,17 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
           saving: false,
         });
       } else {
-        // Create a blank week doc for weeks that haven't been started yet
+        // Only create a blank week doc when the SERVER confirms the doc
+        // doesn't exist. If this snapshot is from local cache only, skip
+        // the write to avoid overwriting real server data with empty data.
         const defaultData = createDefaultData(weekId);
-        setDoc(docRef, defaultData).catch((err) =>
-          console.error('[PlannerStore] Failed to create week doc:', err)
-        );
         set({ data: defaultData, loading: false, loaded: true });
+
+        if (!snapshot.metadata.fromCache) {
+          setDoc(docRef, defaultData, { merge: true }).catch((err) =>
+            console.error('[PlannerStore] Failed to create week doc:', err)
+          );
+        }
       }
     }, (error) => {
       console.error('[PlannerStore] Sync error:', error);
@@ -525,4 +533,14 @@ export const useWeeklyPlannerStore = create<WeeklyPlannerStore>((set, get) => ({
       console.error('[PlannerStore] addTaskToDate failed:', err);
     }
   },
-}));
+    }),
+    {
+      name: 'herizon-planner-store',
+      partialize: (state) => ({
+        data: state.data,
+        currentWeekId: state.currentWeekId,
+        viewingWeekId: state.viewingWeekId,
+      }),
+    }
+  )
+);

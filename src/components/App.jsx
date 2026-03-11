@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import useGymData from '../hooks/useGymData';
 import useHabitsData from '../hooks/useHabitsData';
 import useExportCSV from '../hooks/useExportCSV';
-import { Activity, Target, Dumbbell, Settings, Loader2, Cloud, CloudOff, Calendar } from 'lucide-react';
+import { Activity, Target, Dumbbell, Settings, Loader2, Cloud, CloudOff, Calendar, Moon } from 'lucide-react';
 import { t } from '../config/translations';
 import usePreferences from '../hooks/usePreferences';
 import { useSyncStore } from '../stores/useSyncStore';
@@ -17,6 +17,7 @@ const LifeOverview = lazy(() => import('./LifeOverview'));
 const LoginPage = lazy(() => import('./LoginPage'));
 const SettingsModal = lazy(() => import('./SettingsModal'));
 const WeeklyPlanner = lazy(() => import('./WeeklyPlanner'));
+const SalahTracker = lazy(() => import('./SalahTracker'));
 
 // ── All available nav pages (add future pages here) ──
 const ALL_NAV_PAGES = [
@@ -24,10 +25,11 @@ const ALL_NAV_PAGES = [
   { id: 'habits', labelKey: 'nav_habits', icon: 'Target' },
   { id: 'gym', labelKey: 'nav_gym', icon: 'Dumbbell' },
   { id: 'planner', labelKey: 'nav_planner', icon: 'Calendar' },
+  { id: 'salah', labelKey: 'nav_salah', icon: 'Moon' },
 ];
 
-const ICON_MAP = { Activity, Dumbbell, Target, Calendar };
-const NAV_STORAGE_KEY = 'herizon_nav_config';
+const ICON_MAP = { Activity, Dumbbell, Target, Calendar, Moon };
+const NAV_STORAGE_KEY = 'herizon_nav_config_v2';
 
 function loadNavConfig() {
   try {
@@ -339,6 +341,7 @@ function Dashboard({ user, logout }) {
               />
             )}
             {activeTab === 'planner' && <WeeklyPlanner />}
+            {activeTab === 'salah' && <SalahTracker />}
           </div>
         </Suspense>
       </div>

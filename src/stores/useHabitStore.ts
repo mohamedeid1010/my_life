@@ -13,6 +13,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { 
   collection, doc, setDoc, deleteDoc, 
   onSnapshot, query, writeBatch, serverTimestamp 
@@ -383,7 +384,9 @@ interface HabitStore {
   ) => Promise<void>;
 }
 
-export const useHabitStore = create<HabitStore>((set, get) => ({
+export const useHabitStore = create<HabitStore>()(
+  persist(
+    (set, get) => ({
   habits: [],
   loaded: false,
   unsubscribeFn: null,
@@ -590,4 +593,12 @@ export const useHabitStore = create<HabitStore>((set, get) => ({
       console.error("[HabitStore] Error message:", err?.message);
     }
   },
-}));
+    }),
+    {
+      name: 'herizon-habit-store',
+      partialize: (state) => ({
+        habits: state.habits,
+      }),
+    }
+  )
+);

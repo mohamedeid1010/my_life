@@ -13,6 +13,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type {
@@ -107,7 +108,9 @@ function mergeLayouts(savedLayouts: Partial<PageLayouts> | undefined): PageLayou
 
 /* ─────────────── Store Definition ─────────────── */
 
-export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
+export const usePreferencesStore = create<PreferencesStore>()(
+  persist(
+    (set, get) => ({
   // ── Initial State ──
   profile: { name: '', photoURL: '' },
   theme: 'dark',
@@ -207,4 +210,15 @@ export const usePreferencesStore = create<PreferencesStore>((set, get) => ({
       console.error('[PreferencesStore] Failed to update layout:', err);
     }
   },
-}));
+    }),
+    {
+      name: 'herizon-preferences-store',
+      partialize: (state) => ({
+        profile: state.profile,
+        theme: state.theme,
+        language: state.language,
+        layouts: state.layouts,
+      }),
+    }
+  )
+);

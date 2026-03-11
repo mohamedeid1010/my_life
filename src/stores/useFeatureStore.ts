@@ -10,6 +10,7 @@
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { FeaturesDocument, FeatureKey, UserRole } from '../types/features';
@@ -63,7 +64,9 @@ interface FeatureStore {
 
 /* ─────────────── Store Definition ─────────────── */
 
-export const useFeatureStore = create<FeatureStore>((set, get) => ({
+export const useFeatureStore = create<FeatureStore>()(
+  persist(
+    (set, get) => ({
   features: null,
   loading: true,
   unsubscribeFn: null,
@@ -115,7 +118,15 @@ export const useFeatureStore = create<FeatureStore>((set, get) => ({
     const { features, loading } = get();
     return evaluateAccess(features, loading, featureName, userRole);
   },
-}));
+    }),
+    {
+      name: 'herizon-feature-store',
+      partialize: (state) => ({
+        features: state.features,
+      }),
+    }
+  )
+);
 
 /* ─────────────── Reactive Custom Hook ─────────────── */
 

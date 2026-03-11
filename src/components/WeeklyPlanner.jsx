@@ -17,19 +17,21 @@ import {
   weekIdToStartDate,
 } from '../stores/useWeeklyPlannerStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { usePreferencesStore } from '../stores/usePreferencesStore';
+import { t } from '../config/translations';
 
 // ==========================================
 // Helpers & Categories
 // ==========================================
 
 const TASK_CATEGORIES = [
-  { id: 'work',        label: 'Work 💼',        color: '#3b82f6' },
-  { id: 'personal',   label: 'Personal 👤',     color: '#8b5cf6' },
-  { id: 'health',     label: 'Health 🏃',       color: '#10b981' },
-  { id: 'study',      label: 'Study 📚',        color: '#f59e0b' },
-  { id: 'finance',    label: 'Finance 💰',      color: '#14b8a6' },
-  { id: 'home',       label: 'Home 🏠',         color: '#ec4899' },
-  { id: 'other',      label: 'Other 📌',        color: '#64748b' },
+  { id: 'work',       key: 'task_work',     color: '#3b82f6' },
+  { id: 'personal',   key: 'task_personal', color: '#8b5cf6' },
+  { id: 'health',     key: 'task_health',   color: '#10b981' },
+  { id: 'study',      key: 'task_study',    color: '#f59e0b' },
+  { id: 'finance',    key: 'task_finance',  color: '#14b8a6' },
+  { id: 'home',       key: 'task_home',     color: '#ec4899' },
+  { id: 'other',      key: 'task_other',    color: '#64748b' },
 ];
 
 // Stable module-level constant — never changes, safe to omit from deps
@@ -110,6 +112,8 @@ function SortableTaskRow({ task, dayId, isReadOnly, onToggle, onTextChange, onBl
 
 export default function WeeklyPlanner() {
   const user = useAuthStore((s) => s.user);
+  const L = usePreferencesStore((s) => s.language) || 'en';
+  const isAr = L === 'ar';
   const {
     data, loading, saving, loaded,
     currentWeekId, viewingWeekId,
@@ -232,7 +236,7 @@ export default function WeeklyPlanner() {
 
   const categoryAnalytics = useMemo(() => {
     const catData = {};
-    TASK_CATEGORIES.forEach(c => { catData[c.id] = { label: c.label, color: c.color, total: 0, done: 0 }; });
+    TASK_CATEGORIES.forEach(c => { catData[c.id] = { key: c.key, color: c.color, total: 0, done: 0 }; });
     days.forEach(day => {
       day.tasks.forEach(task => {
         if (task.text.trim() && task.masterId) {
@@ -263,7 +267,7 @@ export default function WeeklyPlanner() {
     let maxDone = -1, bDay = null;
     days.forEach(d => {
       const count = d.tasks.filter(t => t.text.trim() && t.done).length;
-      if (count > maxDone && count > 0) { maxDone = count; bDay = d.name; }
+      if (count > maxDone && count > 0) { maxDone = count; bDay = d.id; }
     });
     return bDay;
   }, [days]);
@@ -385,8 +389,8 @@ export default function WeeklyPlanner() {
   };
 
   // Date formatting
-  const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const formatDayCardDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const formatDate = (d) => d.toLocaleDateString(isAr ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const formatDayCardDate = (d) => d.toLocaleDateString(isAr ? 'ar-SA' : 'en-US', { month: 'short', day: 'numeric' });
 
   const activeCategories = TASK_CATEGORIES.filter(cat => masterTasks.some(t => t.categoryId === cat.id));
 
@@ -395,7 +399,7 @@ export default function WeeklyPlanner() {
       <div className="max-w-[1600px] mx-auto p-4 md:p-8">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <div className="w-10 h-10 border-4 border-violet-500/30 border-t-violet-400 rounded-full animate-spin" />
-          <div className="text-[var(--text-muted)] font-medium">Synchronizing Weekly Planner...</div>
+          <div className="text-[var(--text-muted)] font-medium">{t('loading_planner', L)}</div>
         </div>
       </div>
     );
@@ -408,13 +412,13 @@ export default function WeeklyPlanner() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[var(--border-glass)] pb-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold gradient-text tracking-tight mb-2">
-            Weekly Planner
+            {t('weekly_planner', L)}
           </h1>
 
           {/* Read-only badge */}
           {isReadOnly && (
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-widest mb-3">
-              <Calendar size={12} /> Viewing Past Week — Read Only
+              <Calendar size={12} /> {t('viewing_past_week', L)}
             </div>
           )}
 
@@ -432,7 +436,7 @@ export default function WeeklyPlanner() {
 
             {/* Week badge */}
             <div className="flex flex-col items-center justify-center bg-[var(--accent-primary)] text-white px-5 py-2 rounded-xl shadow-[var(--shadow-glow)] border border-white/20">
-              <span className="text-[10px] uppercase tracking-widest font-bold opacity-90 mb-1">Week</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold opacity-90 mb-1">{t('week', L)}</span>
               <span className="text-3xl font-black leading-none">{weekNum}</span>
             </div>
 
@@ -450,7 +454,7 @@ export default function WeeklyPlanner() {
               <CalendarRange size={20} className="text-[var(--accent-primary)]" />
               <div className="flex flex-col">
                 <span className="text-[10px] uppercase tracking-wider font-extrabold text-[var(--text-muted)] mb-0.5">
-                  {isViewingCurrentWeek ? 'Current Schedule' : 'Viewing'}
+                  {isViewingCurrentWeek ? t('current_schedule', L) : t('viewing', L)}
                 </span>
                 <span className="text-sm font-bold text-[var(--text-primary)]">
                   {formatDate(weekStartDate)} <span className="text-[var(--text-muted)] mx-1">→</span> {formatDate(weekEndDate)}
@@ -465,7 +469,7 @@ export default function WeeklyPlanner() {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 text-[var(--accent-primary)] text-xs font-bold hover:bg-[var(--accent-primary)]/20 transition-all"
                 title="Go to current week"
               >
-                <RotateCcw size={14} /> This Week
+                <RotateCcw size={14} /> {t('this_week', L)}
               </button>
             )}
           </div>
@@ -474,7 +478,7 @@ export default function WeeklyPlanner() {
         <div className="flex items-center gap-2">
           {saving && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-bold uppercase tracking-widest animate-pulse">
-              <Activity size={12} /> Saving...
+              <Activity size={12} /> {t('saving', L)}...
             </div>
           )}
 
@@ -484,13 +488,13 @@ export default function WeeklyPlanner() {
               onClick={() => setActiveView('planner')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'planner' ? 'bg-[var(--accent-primary)] text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
             >
-              <CalendarDays size={18} /> Planner
+              <CalendarDays size={18} /> {t('planner', L)}
             </button>
             <button
               onClick={() => setActiveView('analytics')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeView === 'analytics' ? 'bg-[var(--accent-primary)] text-white shadow-lg' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
             >
-              <BarChart3 size={18} /> Analytics
+              <BarChart3 size={18} /> {t('analytics_view', L)}
             </button>
           </div>
 
@@ -505,9 +509,9 @@ export default function WeeklyPlanner() {
             </button>
             {showSettings && (
               <div className="absolute right-0 mt-3 w-56 glass-card p-4 z-50 animate-slide-down shadow-2xl border-[var(--border-glass-hover)]">
-                <h4 className="text-xs uppercase tracking-wider font-bold text-[var(--text-muted)] mb-3">Planner Settings</h4>
+                <h4 className="text-xs uppercase tracking-wider font-bold text-[var(--text-muted)] mb-3">{t('planner_settings', L)}</h4>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium text-[var(--text-primary)]">Week Starts On:</label>
+                  <label className="text-sm font-medium text-[var(--text-primary)]">{t('week_starts_on', L)}</label>
                   <select
                     value={startDay}
                     onChange={(e) => { updateData({ startDay: e.target.value }); setShowSettings(false); }}
@@ -516,7 +520,7 @@ export default function WeeklyPlanner() {
                   >
                     {['sat','sun','mon','tue','wed','thu','fri'].map(d => (
                       <option key={d} value={d} className="bg-[#1c1c1e]">
-                        {d.charAt(0).toUpperCase() + d.slice(1)}
+                        {t('day_' + d, L)}
                       </option>
                     ))}
                   </select>
@@ -533,8 +537,8 @@ export default function WeeklyPlanner() {
           <div className="flex items-center gap-3">
             <AlertTriangle size={20} className="text-amber-400 shrink-0" />
             <p className="text-sm font-bold text-amber-300">
-              You have <span className="text-amber-200">{incompleteTasks.length}</span> unfinished task{incompleteTasks.length > 1 ? 's' : ''} in this week.
-              Roll them over to the next week's master list?
+              {incompleteTasks.length} {t('unfinished_tasks', L)}
+              {' '}{t('rollover_question', L)}
             </p>
           </div>
           <button
@@ -547,7 +551,7 @@ export default function WeeklyPlanner() {
             ) : (
               <RotateCcw size={15} />
             )}
-            Roll Over
+            {t('roll_over', L)}
           </button>
         </div>
       )}
@@ -558,15 +562,15 @@ export default function WeeklyPlanner() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="glass-card p-6 flex flex-col relative overflow-hidden">
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">Weekly Completion</h3>
+                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">{t('weekly_completion', L)}</h3>
                 <Activity className="text-[var(--accent-primary)]" size={24} />
               </div>
               <div className="text-5xl font-extrabold text-[var(--text-primary)] mb-2 relative z-10">{globalStats.percentage}%</div>
               <div className="flex items-center gap-2 text-sm font-bold relative z-10">
                 {globalStats.percentage >= mockHistoricalData[3].completion ? (
-                  <span className="flex items-center text-[#10b981]"><TrendingUp size={16} className="mr-1"/>+{globalStats.percentage - mockHistoricalData[3].completion}% vs last week</span>
+                  <span className="flex items-center text-[#10b981]"><TrendingUp size={16} className="mr-1"/>+{globalStats.percentage - mockHistoricalData[3].completion}% {t('vs_last_week', L)}</span>
                 ) : (
-                  <span className="flex items-center text-[#ef4444]"><TrendingDown size={16} className="mr-1"/>{globalStats.percentage - mockHistoricalData[3].completion}% vs last week</span>
+                  <span className="flex items-center text-[#ef4444]"><TrendingDown size={16} className="mr-1"/>{globalStats.percentage - mockHistoricalData[3].completion}% {t('vs_last_week', L)}</span>
                 )}
               </div>
               <div className="absolute bottom-0 left-0 h-1.5 bg-[#10b981] transition-all duration-1000 ease-out" style={{ width: `${globalStats.percentage}%` }} />
@@ -574,33 +578,33 @@ export default function WeeklyPlanner() {
 
             <div className="glass-card p-6 border-l-4 border-l-[#f59e0b]">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">AI Insight: Alert</h3>
+                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">{t('ai_insight_alert', L)}</h3>
                 <AlertTriangle className="text-[#f59e0b]" size={24} />
               </div>
               {weakestCategory ? (
                 <>
-                  <div className="text-xl font-bold text-[var(--text-primary)] mb-2">Needs Attention: <span style={{ color: weakestCategory.color }}>{weakestCategory.label.split(' ')[0]}</span></div>
+                  <div className="text-xl font-bold text-[var(--text-primary)] mb-2">{t('needs_attention', L)}: <span style={{ color: weakestCategory.color }}>{t(weakestCategory.key, L).split(' ')[0]}</span></div>
                   <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                    Only <strong>{weakestCategory.percent}%</strong> completion across {weakestCategory.total} tasks.
+                    <strong>{weakestCategory.percent}%</strong> {t('only_pct_completion', L)} {weakestCategory.total} {t('tasks', L)}.
                   </p>
                 </>
               ) : (
-                <div className="text-[var(--text-muted)] italic">Add tasks to get AI insights.</div>
+                <div className="text-[var(--text-muted)] italic">{t('add_tasks_insight', L)}</div>
               )}
             </div>
 
             <div className="glass-card p-6 border-l-4 border-l-[var(--accent-primary)] relative overflow-hidden">
               <div className="flex justify-between items-start mb-4 relative z-10">
-                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">Peak Energy Day</h3>
+                <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider">{t('peak_energy_day', L)}</h3>
                 <Trophy className="text-[var(--accent-primary)]" size={24} />
               </div>
               {bestDay ? (
                 <>
-                  <div className="text-3xl font-extrabold text-[var(--accent-primary)] mb-2 relative z-10">{bestDay}</div>
-                  <p className="text-sm text-[var(--text-muted)] relative z-10">Your most productive day this week.</p>
+                  <div className="text-3xl font-extrabold text-[var(--accent-primary)] mb-2 relative z-10">{t('day_' + bestDay, L)}</div>
+                  <p className="text-sm text-[var(--text-muted)] relative z-10">{t('most_productive', L)}</p>
                 </>
               ) : (
-                <div className="text-[var(--text-muted)] italic">Complete tasks to see your best day.</div>
+                <div className="text-[var(--text-muted)] italic">{t('complete_tasks_best_day', L)}</div>
               )}
               <div className="absolute -right-4 -bottom-4 opacity-5"><Trophy size={120} /></div>
             </div>
@@ -609,16 +613,16 @@ export default function WeeklyPlanner() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="glass-card p-6">
               <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-6 flex items-center gap-2">
-                <LayoutDashboard size={20} /> Category Mastery
+                <LayoutDashboard size={20} /> {t('category_mastery', L)}
               </h3>
               {categoryAnalytics.length === 0 ? (
-                <div className="text-center p-8 border-2 border-dashed border-[var(--border-glass)] rounded-xl text-[var(--text-muted)]">No data yet.</div>
+                <div className="text-center p-8 border-2 border-dashed border-[var(--border-glass)] rounded-xl text-[var(--text-muted)]">{t('no_data_yet', L)}</div>
               ) : (
                 <div className="space-y-5">
                   {categoryAnalytics.sort((a,b) => b.total - a.total).map(cat => (
-                    <div key={cat.label}>
+                    <div key={cat.key}>
                       <div className="flex justify-between text-sm mb-1.5">
-                        <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: cat.color}} /> {cat.label}</span>
+                        <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: cat.color}} /> {t(cat.key, L)}</span>
                         <span className="text-[var(--text-muted)] font-medium">{cat.done}/{cat.total} ({cat.percent}%)</span>
                       </div>
                       <div className="w-full h-2 bg-black/20 rounded-full overflow-hidden">
@@ -632,7 +636,7 @@ export default function WeeklyPlanner() {
 
             <div className="glass-card p-6 flex flex-col">
               <h3 className="text-lg font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-6 flex items-center gap-2">
-                <BarChart3 size={20} /> History vs Current
+                <BarChart3 size={20} /> {t('history_vs_current', L)}
               </h3>
               <div className="flex-1 flex items-end justify-between gap-2 pt-10 pb-4 border-b border-[var(--border-glass)] px-2">
                 {mockHistoricalData.map((d, idx) => (
@@ -651,7 +655,7 @@ export default function WeeklyPlanner() {
                       <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold bg-[var(--accent-primary)] text-white px-2 py-1 rounded shadow-lg">{globalStats.percentage}%</div>
                     </div>
                   </div>
-                  <span className="text-[10px] text-[var(--accent-primary)] font-extrabold uppercase">This Week</span>
+                  <span className="text-[10px] text-[var(--accent-primary)] font-extrabold uppercase">{t('this_week', L)}</span>
                 </div>
               </div>
             </div>
@@ -668,12 +672,12 @@ export default function WeeklyPlanner() {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4 border-b border-[var(--border-glass)] pb-3">
               <div className="flex items-center gap-2">
                 <ListTodo size={24} className="text-[var(--accent-primary)]" />
-                <h2 className="text-xl font-bold uppercase tracking-wide text-[var(--accent-primary)]">Master Task List</h2>
+                <h2 className="text-xl font-bold uppercase tracking-wide text-[var(--accent-primary)]">{t('master_task_list', L)}</h2>
               </div>
               <div className="flex items-center gap-4 bg-black/10 px-4 py-2 rounded-xl border border-[var(--border-glass)] shadow-inner">
                 <div className="flex flex-col text-sm">
-                  <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider font-bold">Weekly Progress</span>
-                  <span className="font-bold text-[var(--text-primary)]">{globalStats.completed} / {globalStats.total} Tasks</span>
+                  <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider font-bold">{t('weekly_progress', L)}</span>
+                  <span className="font-bold text-[var(--text-primary)]">{globalStats.completed} / {globalStats.total} {t('tasks', L)}</span>
                 </div>
                 <div className="w-24 md:w-32 h-2.5 bg-black/30 rounded-full overflow-hidden border border-white/5">
                   <div className="h-full transition-all duration-700 ease-out" style={{ width: `${globalStats.percentage}%`, background: 'var(--gradient-success)' }} />
@@ -691,7 +695,7 @@ export default function WeeklyPlanner() {
                       type="text" value={masterInput}
                       onChange={e => setMasterInput(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleAddMasterTask(); }}
-                      placeholder="Type a new task and press Enter..."
+                      placeholder={t('add_task_placeholder', L)}
                       className="w-full pl-4 pr-32 py-2.5 rounded-lg bg-black/10 border border-[var(--border-glass)] focus:border-[var(--accent-primary)] outline-none transition text-sm sm:text-base"
                     />
                     <div className="absolute right-2 flex items-center gap-1">
@@ -707,13 +711,13 @@ export default function WeeklyPlanner() {
                       <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}
                         className="h-8 pl-2 pr-7 py-0 text-xs sm:text-sm bg-[var(--bg-card)] border-none rounded cursor-pointer outline-none focus:ring-1 focus:ring-[var(--accent-primary)] text-[var(--text-primary)]">
                         {TASK_CATEGORIES.map(cat => (
-                          <option key={cat.id} value={cat.id} className="bg-[#1c1c1e] text-white">{cat.label}</option>
+                          <option key={cat.id} value={cat.id} className="bg-[#1c1c1e] text-white">{t(cat.key, L)}</option>
                         ))}
                       </select>
                     </div>
                   </div>
                   <button onClick={handleAddMasterTask} className="px-6 py-2.5 rounded-lg bg-[var(--accent-primary)] text-white font-bold hover:brightness-110 transition shadow-lg shrink-0">
-                    {targetDate ? 'Add to Date' : 'Add Task'}
+                    {targetDate ? t('add_to_date', L) : t('add_task', L)}
                   </button>
                 </div>
 
@@ -721,7 +725,7 @@ export default function WeeklyPlanner() {
                 {showDatePicker && (
                   <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--accent-primary)]/5 border border-[var(--accent-primary)]/20 animate-fade-in">
                     <CalendarPlus size={16} className="text-[var(--accent-primary)] shrink-0" />
-                    <span className="text-sm font-bold text-[var(--text-muted)]">Schedule to:</span>
+                    <span className="text-sm font-bold text-[var(--text-muted)]">{t('schedule_to', L)}</span>
                     <input
                       type="date"
                       value={targetDate}
@@ -731,7 +735,7 @@ export default function WeeklyPlanner() {
                     />
                     {targetDate && (
                       <span className="text-xs text-[var(--accent-primary)] font-bold">
-                        → Task will be added to the correct week & day automatically
+                        {t('task_auto_added', L)}
                       </span>
                     )}
                     {targetDate && (
@@ -748,7 +752,7 @@ export default function WeeklyPlanner() {
             <div className="flex overflow-x-auto gap-4 custom-scrollbar pb-4 items-start pt-2">
               {masterTasks.length === 0 && (
                 <div className="w-full flex items-center justify-center text-[var(--text-muted)] text-sm italic py-8 border-2 border-dashed border-[var(--border-glass)] rounded-xl">
-                  {isReadOnly ? 'No tasks were created this week.' : 'Your master task list is empty. Add a task above to get started!'}
+                  {isReadOnly ? t('no_tasks_week', L) : t('empty_master_list', L)}
                 </div>
               )}
               {activeCategories.map(category => {
@@ -761,7 +765,7 @@ export default function WeeklyPlanner() {
                     className="min-w-[240px] max-w-[240px] bg-black/10 border border-[var(--border-glass)] rounded-xl p-3 flex flex-col gap-2 transition-colors hover:border-[var(--border-glass-hover)]"
                   >
                     <h3 className="font-bold text-sm uppercase flex items-center gap-2 mb-2 pb-2 border-b border-[var(--border-glass)]" style={{ color: category.color }}>
-                      {category.label}
+                      {t(category.key, L)}
                       <span className="text-[10px] bg-black/30 px-2 py-0.5 rounded-full text-white/70 ml-auto">{catTasks.length}</span>
                     </h3>
                     {catTasks.map(task => {
@@ -834,10 +838,10 @@ export default function WeeklyPlanner() {
                       dayPercent === 100 && dayStats.total > 0 ? 'text-[#10b981]' :
                       'text-[var(--accent-primary)]'
                     }`}>
-                      {day.name}
+                      {t('day_' + day.id, L)}
                     </h2>
                     <div className="flex flex-col items-end">
-                      <span className="text-[10px] text-[var(--text-muted)] mb-0.5 uppercase tracking-wider font-bold">Date</span>
+                      <span className="text-[10px] text-[var(--text-muted)] mb-0.5 uppercase tracking-wider font-bold">{t('date', L)}</span>
                       <span className="text-sm font-extrabold text-[var(--text-primary)] bg-black/20 px-2 py-0.5 rounded border border-white/5">
                         {autoDate ? formatDayCardDate(autoDate) : '—'}
                       </span>
@@ -847,7 +851,7 @@ export default function WeeklyPlanner() {
                   {/* Daily progress bar */}
                   <div className="mb-4 bg-black/5 p-3 rounded-lg border border-white/5">
                     <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Daily Progress</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{t('daily_progress', L)}</span>
                       <span className={`text-[10px] font-bold ${dayPercent === 100 && dayStats.total > 0 ? 'text-[#10b981]' : 'text-[var(--text-primary)]'}`}>{dayPercent}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-black/20 rounded-full overflow-hidden">
@@ -855,7 +859,7 @@ export default function WeeklyPlanner() {
                     </div>
                   </div>
 
-                  <h3 className="text-sm font-semibold mb-3 text-[var(--text-secondary)] uppercase tracking-wider">To Do:</h3>
+                  <h3 className="text-sm font-semibold mb-3 text-[var(--text-secondary)] uppercase tracking-wider">{t('to_do', L)}</h3>
 
                   {/* Sortable task list */}
                   <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 pb-2">
@@ -886,7 +890,7 @@ export default function WeeklyPlanner() {
                               onClick={() => addDayTask(day.id)}
                               className="mt-2 flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--accent-primary)] w-fit px-2 py-1 rounded transition-colors"
                             >
-                              <Plus size={14} /> Add Task Slot
+                              <Plus size={14} /> {t('add_task_slot', L)}
                             </button>
                           )}
                         </div>
@@ -901,13 +905,13 @@ export default function WeeklyPlanner() {
             <div className="glass-card p-5 flex flex-col h-[520px] bg-[var(--bg-card-hover)]">
               <div className="flex items-center gap-2 mb-4 border-b border-[var(--border-glass)] pb-3">
                 <Edit3 size={20} className="text-[var(--accent-primary)]" />
-                <h2 className="text-xl font-bold uppercase tracking-wide text-[var(--accent-primary)]">Notes</h2>
+                <h2 className="text-xl font-bold uppercase tracking-wide text-[var(--accent-primary)]">{t('notes_label', L)}</h2>
               </div>
               <textarea
                 value={notes}
                 onChange={(e) => !isReadOnly && updateData({ notes: e.target.value })}
                 readOnly={isReadOnly}
-                placeholder={isReadOnly ? 'No notes for this week.' : 'Write your important notes here...'}
+                placeholder={isReadOnly ? t('notes_empty_ro', L) : t('notes_placeholder_planner', L)}
                 className="flex-1 w-full bg-transparent border-none outline-none resize-none custom-scrollbar text-[var(--text-primary)] leading-relaxed"
               />
             </div>
@@ -915,12 +919,12 @@ export default function WeeklyPlanner() {
 
           {/* Reflections */}
           <div className="mt-6 glass-card p-6 border-l-4 border-l-[var(--accent-primary)]">
-            <h2 className="text-lg font-bold uppercase tracking-wide text-[var(--accent-primary)] mb-3">Reflections:</h2>
+            <h2 className="text-lg font-bold uppercase tracking-wide text-[var(--accent-primary)] mb-3">{t('reflections', L)}</h2>
             <textarea
               value={reflections}
               onChange={(e) => !isReadOnly && updateData({ reflections: e.target.value })}
               readOnly={isReadOnly}
-              placeholder={isReadOnly ? 'No reflections written for this week.' : 'What did you achieve? What needs improvement for next week?'}
+              placeholder={isReadOnly ? t('reflections_empty_ro', L) : t('reflections_placeholder', L)}
               className="w-full h-24 bg-transparent border-none outline-none resize-none custom-scrollbar text-[var(--text-primary)] leading-relaxed"
             />
           </div>

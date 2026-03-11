@@ -10,6 +10,8 @@
 import { useState } from 'react';
 import { useAuthStore } from '../stores/useAuthStore';
 import { Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
+import { t } from '../config/translations';
+import { usePreferencesStore } from '../stores/usePreferencesStore';
 
 /* ─────────────── Google "G" Logo (inline SVG) ─────────────── */
 
@@ -33,6 +35,8 @@ export default function LoginPage() {
   const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const storeError = useAuthStore((s) => s.error);
   const clearError = useAuthStore((s) => s.clearError);
+  const L = usePreferencesStore((s) => s.language);
+  const isAr = L === 'ar';
 
   // ── Local UI state ──
   const [isLogin, setIsLogin] = useState(true);
@@ -61,7 +65,7 @@ export default function LoginPage() {
         await loginWithEmail(email, password);
       } else {
         if (!name.trim()) {
-          setLocalError('Please enter your name');
+          setLocalError(t('error_enter_name', L));
           setLoading(false);
           return;
         }
@@ -71,13 +75,13 @@ export default function LoginPage() {
       // Map Firebase error codes to user-friendly messages
       const code = err.code;
       if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
-        setLocalError('Invalid email or password');
+        setLocalError(t('error_invalid_credentials', L));
       } else if (code === 'auth/email-already-in-use') {
-        setLocalError('Email already registered. Try logging in.');
+        setLocalError(t('error_email_registered', L));
       } else if (code === 'auth/weak-password') {
-        setLocalError('Password must be at least 6 characters');
+        setLocalError(t('error_weak_password', L));
       } else if (code === 'auth/invalid-email') {
-        setLocalError('Invalid email address');
+        setLocalError(t('error_invalid_email', L));
       } else {
         setLocalError(err.message);
       }
@@ -99,7 +103,7 @@ export default function LoginPage() {
     } catch (err) {
       // User closed the popup or network error
       if (err.code !== 'auth/popup-closed-by-user') {
-        setLocalError(err.message || 'Google sign-in failed');
+        setLocalError(err.message || t('error_google_failed', L));
       }
     } finally {
       setGoogleLoading(false);
@@ -118,6 +122,7 @@ export default function LoginPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4 font-sans"
+      dir={isAr ? 'rtl' : 'ltr'}
       style={{
         background: 'var(--bg-primary)',
         color: 'var(--text-primary)',
@@ -150,7 +155,7 @@ export default function LoginPage() {
             Horizon
           </h1>
           <p className="text-sm text-white/30 mt-1">
-            {isLogin ? 'Welcome back! Sign in to continue' : 'Create your account'}
+            {isLogin ? t('welcome_back', L) : t('create_account', L)}
           </p>
         </div>
 
@@ -172,7 +177,7 @@ export default function LoginPage() {
               <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
               <input
                 type="text"
-                placeholder="Your Name"
+                placeholder={t('your_name_placeholder', L)}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full pl-10 pr-4 py-3.5 rounded-xl text-sm font-semibold text-white/90 placeholder:text-white/20 outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
@@ -186,7 +191,7 @@ export default function LoginPage() {
             <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25" />
             <input
               type="email"
-              placeholder="Email Address"
+                placeholder={t('email_placeholder', L)}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -224,7 +229,7 @@ export default function LoginPage() {
               <Loader2 size={20} className="animate-spin" />
             ) : (
               <>
-                {isLogin ? 'Sign In' : 'Create Account'}
+                {isLogin ? t('sign_in', L) : t('create_account_btn', L)}
                 <ArrowRight size={18} />
               </>
             )}
@@ -235,7 +240,7 @@ export default function LoginPage() {
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
           <span className="text-xs font-semibold text-white/20 uppercase tracking-wider">
-            or continue with
+            {t('or_continue_with', L)}
           </span>
           <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
         </div>
@@ -267,7 +272,7 @@ export default function LoginPage() {
             onClick={toggleMode}
             className="text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors"
           >
-            {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
+            {isLogin ? `${t('no_account', L)} ${t('sign_up', L)}` : `${t('have_account', L)} ${t('login', L)}`}
           </button>
         </div>
       </div>

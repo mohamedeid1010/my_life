@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { PRAYER_LABELS, STATUS_CONFIG } from '../../types/salah.types';
+import { t } from '../../config/translations';
+import usePreferences from '../../hooks/usePreferences';
 
 const STATUS_ORDER = ['missed', 'late', 'ontime', 'congregation', 'mosque'];
 
-export default function PrayerCard({ prayerName, entry, weekData, onStatusChange, onKhushooChange, isReadOnly }) {
+export default function PrayerCard({ prayerName, entry, weekData, onStatusChange, onKhushooChange, isReadOnly, isNextPrayer, nextPrayerCountdown }) {
   const [showKhushoo, setShowKhushoo] = useState(false);
+  const { language } = usePreferences();
+  const L = language;
+  const isAr = L === 'ar';
   const label = PRAYER_LABELS[prayerName];
   const currentStatus = entry?.status || 'none';
   const currentPoints = entry?.points || 0;
@@ -22,14 +27,18 @@ export default function PrayerCard({ prayerName, entry, weekData, onStatusChange
 
   return (
     <div
-      className="glass-card p-3 sm:p-4 transition-all duration-500 relative overflow-hidden group flex flex-col"
+      className={`glass-card p-3 sm:p-4 transition-all duration-500 relative overflow-hidden group flex flex-col ${isNextPrayer ? 'ring-2 ring-cyan-400/60' : ''}`}
       style={{
-        borderColor: isLogged ? statusConf.color + '40' : undefined,
-        boxShadow: isLogged ? `0 0 20px ${statusConf.color}15` : undefined,
+        borderColor: isNextPrayer ? '#22d3ee' : isLogged ? statusConf.color + '40' : undefined,
+        boxShadow: isNextPrayer ? '0 0 25px rgba(34,211,238,0.2)' : isLogged ? `0 0 20px ${statusConf.color}15` : undefined,
       }}
     >
+      {/* Next prayer glow */}
+      {isNextPrayer && (
+        <div className="absolute inset-0 opacity-10 transition-opacity duration-500" style={{ background: 'radial-gradient(ellipse at center, #22d3ee, transparent 70%)' }} />
+      )}
       {/* Glow background */}
-      {isLogged && (
+      {isLogged && !isNextPrayer && (
         <div
           className="absolute inset-0 opacity-5 transition-opacity duration-500"
           style={{ background: `radial-gradient(ellipse at center, ${statusConf.color}, transparent 70%)` }}
@@ -40,8 +49,13 @@ export default function PrayerCard({ prayerName, entry, weekData, onStatusChange
         {/* Header — emoji + name + points */}
         <div className="text-center mb-3">
           <span className="text-3xl block mb-1">{label.emoji}</span>
-          <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wide">{label.en}</h3>
-          <span className="text-[10px] font-bold text-[var(--text-muted)] block">{label.ar}</span>
+          <h3 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wide">{isAr ? label.ar : label.en}</h3>
+          <span className="text-[10px] font-bold text-[var(--text-muted)] block">{isAr ? label.en : label.ar}</span>
+          {isNextPrayer && nextPrayerCountdown && (
+            <div className="inline-flex items-center gap-1 mt-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 animate-pulse">
+              ⏳ {nextPrayerCountdown}
+            </div>
+          )}
           {isLogged && (
             <div
               className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold animate-fade-in"
@@ -61,7 +75,7 @@ export default function PrayerCard({ prayerName, entry, weekData, onStatusChange
             return (
               <button
                 key={status}
-                onClick={() => !isReadOnly && onStatusChange(prayerName, status)}
+                onClick={() => !isReadOnly && onStatusChange(prayerName, currentStatus === status ? 'none' : status)}
                 disabled={isReadOnly}
                 className={`flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-all duration-200 ${
                   isActive
@@ -76,7 +90,7 @@ export default function PrayerCard({ prayerName, entry, weekData, onStatusChange
               >
                 <span className="text-sm">{conf.icon}</span>
                 <span className="text-[9px] font-bold uppercase tracking-wider flex-1 text-left" style={{ color: isActive ? conf.color : 'var(--text-muted)' }}>
-                  {status === 'ontime' ? 'On Time' : status === 'congregation' ? 'Group' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === 'ontime' ? t('status_ontime', L) : status === 'congregation' ? t('status_congregation', L) : status === 'missed' ? t('status_missed', L) : status === 'late' ? t('status_late', L) : t('status_mosque', L)}
                 </span>
               </button>
             );

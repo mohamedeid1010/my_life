@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Activity, BarChart3, TrendingUp, TrendingDown, AlertTriangle, Trophy,
-  Calendar, Moon, Sun, ChevronRight, Flame, Star, Target, Eye,
+  Calendar, Moon, Sun, ChevronRight, Flame, Star, Target, Eye, MapPin, Clock,
 } from 'lucide-react';
+import { CalculationMethod, PrayerTimes, Coordinates } from 'adhan';
 import { useSalahStore } from '../stores/useSalahStore';
 import { useAuthStore } from '../stores/useAuthStore';
 import {
@@ -10,6 +11,114 @@ import {
 } from '../types/salah.types';
 import PrayerCard from './salah/PrayerCard';
 import QadaPanel from './salah/QadaPanel';
+import { t } from '../config/translations';
+import usePreferences from '../hooks/usePreferences';
+
+/* ── Hijri date helper ── */
+function getHijriDate() {
+  try {
+    const formatter = new Intl.DateTimeFormat('ar-SA-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    return formatter.format(new Date());
+  } catch {
+    return null;
+  }
+}
+
+/* ── Prayer times helpers ── */
+const ADHAN_PRAYER_MAP = { fajr: 'fajr', dhuhr: 'dhuhr', asr: 'asr', maghrib: 'maghrib', isha: 'isha' };
+
+function getPrayerTimesFromCoords(lat, lng) {
+  const coords = new Coordinates(lat, lng);
+  const params = CalculationMethod.Egyptian();
+  const date = new Date();
+  const pt = new PrayerTimes(coords, date, params);
+  return {
+    fajr: pt.fajr,
+    dhuhr: pt.dhuhr,
+    asr: pt.asr,
+    maghrib: pt.maghrib,
+    isha: pt.isha,
+  };
+}
+
+function getNextPrayer(prayerTimes) {
+  const now = new Date();
+  for (const name of PRAYER_NAMES) {
+    if (prayerTimes[name] > now) return { name, time: prayerTimes[name] };
+  }
+  return null; // all prayers passed for today
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return '00:00:00';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function formatPrayerTime(date) {
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
+
+/* ── usePrayerTimes hook ── */
+function usePrayerTimes() {
+  const [prayerTimes, setPrayerTimes] = useState(null);
+  const [nextPrayer, setNextPrayer] = useState(null);
+  const [countdown, setCountdown] = useState('');
+  const [locationGranted, setLocationGranted] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const intervalRef = useRef(null);
+
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) return;
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const times = getPrayerTimesFromCoords(pos.coords.latitude, pos.coords.longitude);
+        setPrayerTimes(times);
+        setLocationGranted(true);
+        setLocationLoading(false);
+      },
+      () => setLocationLoading(false),
+      { enableHighAccuracy: false, timeout: 10000 }
+    );
+  }, []);
+
+  // Auto-request on mount if permission was previously granted
+  useEffect(() => {
+    if (navigator.permissions) {
+      navigator.permissions.query({ name: 'geolocation' }).then(result => {
+        if (result.state === 'granted') requestLocation();
+      }).catch(() => {});
+    }
+  }, [requestLocation]);
+
+  // Countdown ticker
+  useEffect(() => {
+    if (!prayerTimes) return;
+
+    const tick = () => {
+      const next = getNextPrayer(prayerTimes);
+      setNextPrayer(next);
+      if (next) {
+        setCountdown(formatCountdown(next.time - new Date()));
+      } else {
+        setCountdown('');
+      }
+    };
+    tick();
+    intervalRef.current = setInterval(tick, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, [prayerTimes]);
+
+  return { prayerTimes, nextPrayer, countdown, locationGranted, locationLoading, requestLocation };
+}
 
 export default function SalahTracker() {
   const user = useAuthStore(s => s.user);
@@ -22,6 +131,11 @@ export default function SalahTracker() {
   } = useSalahStore();
 
   const [activeView, setActiveView] = useState('today');
+  const { prayerTimes, nextPrayer, countdown, locationGranted, locationLoading, requestLocation } = usePrayerTimes();
+  const hijriDate = useMemo(() => getHijriDate(), []);
+  const { language } = usePreferences();
+  const L = language;
+  const isAr = L === 'ar';
 
   useEffect(() => {
     if (user?.uid) initialize(user.uid);
@@ -116,33 +230,39 @@ export default function SalahTracker() {
       <div className="max-w-[1200px] mx-auto p-4 md:p-8">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
-          <div className="text-[var(--text-muted)] font-medium">Loading Prayer Tracker...</div>
+          <div className="text-[var(--text-muted)] font-medium">{t('loading_salah', L)}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto p-4 md:p-8 animate-fade-in">
+    <div className="max-w-[1200px] mx-auto p-4 md:p-8 animate-fade-in" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* ═══ Header ═══ */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 border-b border-[var(--border-glass)] pb-6">
         <div>
           <h1 className="text-4xl md:text-5xl font-extrabold gradient-text tracking-tight mb-1">
-            🕌 Salah Tracker
+            {t('salah_tracker', L)}
           </h1>
           <p className="text-sm text-[var(--text-muted)] font-medium italic">
             "إن الصلاة كانت على المؤمنين كتاباً موقوتاً"
           </p>
+          {hijriDate && (
+            <div className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20">
+              <span className="text-base">🗓️</span>
+              <span className="text-sm font-bold text-[var(--accent-primary)]" dir="rtl">{hijriDate}</span>
+            </div>
+          )}
         </div>
 
         {/* View switcher */}
         <div className="glass-card p-1 flex gap-1 rounded-xl">
           {[
-            { id: 'today', label: 'Today', icon: Sun },
-            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'fajr', label: 'Fajr', icon: Moon },
-            { id: 'qada', label: 'Qada ', icon: null },
+            { id: 'today', label: t('today_view', L), icon: Sun },
+            { id: 'analytics', label: t('analytics_view', L), icon: BarChart3 },
+            { id: 'fajr', label: t('fajr_view', L), icon: Moon },
+            { id: 'qada', label: t('qada_view', L), icon: null },
           ].map(v => {
             const qadaRemaining = v.id === 'qada'
               ? (['fajr','dhuhr','asr','maghrib','isha'].reduce((sum, n) => {
@@ -202,7 +322,7 @@ export default function SalahTracker() {
                   <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-400">
                     <Flame size={18} />
                     <span className="text-lg font-black">{streak}</span>
-                    <span className="text-[10px] uppercase tracking-wider font-bold opacity-70">streak</span>
+                    <span className="text-[10px] uppercase tracking-wider font-bold opacity-70">{isAr ? 'سلسلة' : 'streak'}</span>
                   </div>
                 )}
                 <div className="flex flex-col items-center justify-center w-16 h-16 rounded-2xl border-2 transition-colors"
@@ -229,6 +349,51 @@ export default function SalahTracker() {
             </div>
           </div>
 
+          {/* Next Prayer Countdown / Location */}
+          {!locationGranted ? (
+            <button
+              onClick={requestLocation}
+              disabled={locationLoading}
+              className="glass-card p-4 flex items-center justify-center gap-3 w-full text-sm font-bold text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-all border border-dashed border-[var(--border-glass)] hover:border-[var(--accent-primary)]"
+            >
+              <MapPin size={18} />
+              {locationLoading ? t('getting_location', L) : t('enable_location', L)}
+            </button>
+          ) : nextPrayer ? (
+            <div className="glass-card p-4 border-l-4 border-l-cyan-500 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Clock size={20} className="text-cyan-400" />
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('next_prayer', L)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{PRAYER_LABELS[nextPrayer.name].emoji}</span>
+                    <span className="text-lg font-black text-[var(--text-primary)]">{isAr ? PRAYER_LABELS[nextPrayer.name].ar : PRAYER_LABELS[nextPrayer.name].en}</span>
+                    <span className="text-sm text-[var(--text-muted)]">{t('at_time', L)} {formatPrayerTime(nextPrayer.time)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
+                <span className="text-2xl font-black text-cyan-400 font-mono tracking-wider">{countdown}</span>
+              </div>
+            </div>
+          ) : locationGranted ? (
+            <div className="glass-card p-4 border-l-4 border-l-emerald-500 flex items-center gap-3">
+              <span className="text-lg">✅</span>
+              <span className="text-sm font-bold text-emerald-400">{t('all_prayers_done', L)}</span>
+            </div>
+          ) : null}
+
+          {/* Prayer Times List (when location is enabled) */}
+          {locationGranted && prayerTimes && (
+            <div className="flex items-center justify-center gap-4 flex-wrap text-xs font-bold text-[var(--text-muted)]">
+              {PRAYER_NAMES.map(name => (
+                <span key={name} className={`flex items-center gap-1 ${nextPrayer?.name === name ? 'text-cyan-400' : ''}`}>
+                  {PRAYER_LABELS[name].emoji} {isAr ? PRAYER_LABELS[name].ar : PRAYER_LABELS[name].en} {formatPrayerTime(prayerTimes[name])}
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* Prayer Cards — all 5 visible side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {PRAYER_NAMES.map(name => (
@@ -240,6 +405,8 @@ export default function SalahTracker() {
                 onStatusChange={setPrayerStatus}
                 onKhushooChange={setKhushoo}
                 isReadOnly={false}
+                isNextPrayer={nextPrayer?.name === name}
+                nextPrayerCountdown={nextPrayer?.name === name ? countdown : null}
               />
             ))}
           </div>
@@ -247,12 +414,12 @@ export default function SalahTracker() {
           {/* Daily Reflection */}
           <div className="glass-card p-5">
             <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3 flex items-center gap-2">
-              <Eye size={16} className="text-[var(--accent-primary)]" /> Daily Reflection
+              <Eye size={16} className="text-[var(--accent-primary)]" /> {t('daily_reflection', L)}
             </h3>
             <textarea
               value={todayData?.notes || ''}
               onChange={e => setDayNotes(e.target.value)}
-              placeholder="How was your spiritual day? Any du'a or reflection..."
+              placeholder={t('reflection_placeholder', L)}
               className="w-full h-20 bg-transparent border-none outline-none resize-none text-sm text-[var(--text-primary)] leading-relaxed placeholder-[var(--text-muted)]"
             />
           </div>
@@ -268,17 +435,17 @@ export default function SalahTracker() {
             <div className="glass-card p-5 text-center">
               <Target size={24} className="mx-auto mb-2 text-emerald-400" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{weekStats.completed}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Prayers / {weekStats.total}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('prayers', L)} / {weekStats.total}</div>
             </div>
             <div className="glass-card p-5 text-center">
               <span className="text-2xl block mb-1">🕌</span>
               <div className="text-3xl font-black text-[var(--text-primary)]">{weekStats.mosque}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">In Mosque</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('in_mosque', L)}</div>
             </div>
             <div className="glass-card p-5 text-center">
               <Star size={24} className="mx-auto mb-2 text-amber-400" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{weekStats.perfectDays}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Perfect Days</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('perfect_days', L)}</div>
             </div>
             <div className="glass-card p-5 text-center border-2 transition-colors"
               style={{
@@ -287,20 +454,20 @@ export default function SalahTracker() {
             >
               <Activity size={24} className="mx-auto mb-2 text-[var(--accent-primary)]" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{sdsScore}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">SDS Score</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('sds_score', L)}</div>
             </div>
           </div>
 
           {/* Weekly Grid */}
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold uppercase tracking-wide text-[var(--accent-primary)] mb-4 flex items-center gap-2">
-              <Calendar size={20} /> Weekly Prayer Grid
+              <Calendar size={20} /> {t('weekly_prayer_grid', L)}
             </h3>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr>
-                    <th className="text-left text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] pb-3 pr-3">Prayer</th>
+                    <th className="text-left text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] pb-3 pr-3">{t('prayer', L)}</th>
                     {weekEntries.map((e, i) => {
                       const d = new Date(e.date);
                       const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
@@ -318,7 +485,7 @@ export default function SalahTracker() {
                   {PRAYER_NAMES.map(name => (
                     <tr key={name}>
                       <td className="py-2 pr-3 font-bold text-[var(--text-primary)] whitespace-nowrap">
-                        {PRAYER_LABELS[name].emoji} {PRAYER_LABELS[name].en}
+                        {PRAYER_LABELS[name].emoji} {isAr ? PRAYER_LABELS[name].ar : PRAYER_LABELS[name].en}
                       </td>
                       {weekEntries.map((entry, i) => {
                         const s = entry.prayers[name]?.status || 'none';
@@ -339,7 +506,7 @@ export default function SalahTracker() {
                   ))}
                   {/* Daily completion row */}
                   <tr className="border-t border-[var(--border-glass)]">
-                    <td className="py-2 pr-3 font-bold text-[var(--text-muted)] text-[10px] uppercase tracking-wider">Score</td>
+                    <td className="py-2 pr-3 font-bold text-[var(--text-muted)] text-[10px] uppercase tracking-wider">{t('score', L)}</td>
                     {weekEntries.map((entry, i) => {
                       const dayCompleted = PRAYER_NAMES.filter(n => {
                         const s = entry.prayers[n]?.status;
@@ -363,7 +530,7 @@ export default function SalahTracker() {
           {/* Per-Prayer Breakdown */}
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold uppercase tracking-wide text-[var(--accent-primary)] mb-4">
-              Per-Prayer Completion
+              {t('per_prayer_completion', L)}
             </h3>
             <div className="space-y-4">
               {PRAYER_NAMES.map(name => {
@@ -374,8 +541,8 @@ export default function SalahTracker() {
                   <div key={name}>
                     <div className="flex justify-between text-sm mb-1.5">
                       <span className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                        {PRAYER_LABELS[name].emoji} {PRAYER_LABELS[name].en}
-                        {isWeakest && <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">⚠ Weakest</span>}
+                        {PRAYER_LABELS[name].emoji} {isAr ? PRAYER_LABELS[name].ar : PRAYER_LABELS[name].en}
+                        {isWeakest && <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-bold">⚠ {t('weakest', L)}</span>}
                       </span>
                       <span className="text-[var(--text-muted)] font-medium">{stats.completed}/{weekEntries.length} · 🕌 {stats.mosque}</span>
                     </div>
@@ -394,7 +561,7 @@ export default function SalahTracker() {
           {/* AI Insights */}
           <div className="glass-card p-5 border-l-4 border-l-[var(--accent-primary)]">
             <h3 className="text-lg font-bold uppercase tracking-wide text-[var(--accent-primary)] mb-4 flex items-center gap-2">
-              <Eye size={20} /> Spiritual Insights
+              <Eye size={20} /> {t('spiritual_insights', L)}
             </h3>
             <div className="space-y-3">
               {insights.map((insight, i) => (
@@ -410,24 +577,24 @@ export default function SalahTracker() {
           {profile && (
             <div className="glass-card p-5">
               <h3 className="text-lg font-bold uppercase tracking-wide text-[var(--text-muted)] mb-4 flex items-center gap-2">
-                <Trophy size={20} className="text-amber-400" /> Lifetime Stats
+                <Trophy size={20} className="text-amber-400" /> {t('lifetime_stats', L)}
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="text-center p-3 rounded-xl bg-black/10 border border-[var(--border-glass)]">
                   <div className="text-2xl font-black text-[var(--text-primary)]">{profile.totalPrayersLogged.toLocaleString()}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Prayers Logged</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('prayers_logged', L)}</div>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-black/10 border border-[var(--border-glass)]">
                   <div className="text-2xl font-black text-emerald-400">{profile.lifetimeMosquePrayers.toLocaleString()}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Mosque Prayers</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('mosque_prayers', L)}</div>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-black/10 border border-[var(--border-glass)]">
                   <div className="text-2xl font-black text-orange-400">{profile.bestStreak}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Best Streak</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('best_streak', L)}</div>
                 </div>
                 <div className="text-center p-3 rounded-xl bg-black/10 border border-[var(--border-glass)]">
                   <div className="text-2xl font-black text-amber-400">{profile.fajrBestStreak}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Fajr Best Streak</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('fajr_best_streak', L)}</div>
                 </div>
               </div>
             </div>
@@ -465,7 +632,7 @@ export default function SalahTracker() {
               </div>
 
               <div className="text-sm text-[var(--text-muted)]">
-                Fajr Rate: <span className="font-black text-amber-400 text-xl">{fajrStats.rate}%</span>
+                {t('fajr_rate', L)}: <span className="font-black text-amber-400 text-xl">{fajrStats.rate}%</span>
                 <span className="ml-2 opacity-60">({fajrStats.completed}/{fajrStats.total} days)</span>
               </div>
             </div>
@@ -476,29 +643,29 @@ export default function SalahTracker() {
             <div className="glass-card p-5 text-center">
               <Flame size={24} className="mx-auto mb-2 text-orange-400" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{profile?.fajrCurrentStreak || 0}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Current Fajr Streak</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('current_fajr_streak', L)}</div>
             </div>
             <div className="glass-card p-5 text-center">
               <Trophy size={24} className="mx-auto mb-2 text-amber-400" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{profile?.fajrBestStreak || 0}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Best Fajr Streak</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('best_fajr_streak', L)}</div>
             </div>
             <div className="glass-card p-5 text-center">
               <span className="text-2xl block mb-1">🕌</span>
               <div className="text-3xl font-black text-emerald-400">{fajrStats.mosque}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Fajr in Mosque</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('fajr_in_mosque', L)}</div>
             </div>
             <div className="glass-card p-5 text-center">
               <Target size={24} className="mx-auto mb-2 text-[var(--accent-primary)]" />
               <div className="text-3xl font-black text-[var(--text-primary)]">{fajrStats.rate}%</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Completion Rate</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{t('completion_rate', L)}</div>
             </div>
           </div>
 
           {/* Fajr Weekly Pattern */}
           <div className="glass-card p-5">
             <h3 className="text-lg font-bold uppercase tracking-wide text-amber-400 mb-4 flex items-center gap-2">
-              <Moon size={20} /> Fajr Weekly Pattern
+              <Moon size={20} /> {t('fajr_weekly_pattern', L)}
             </h3>
             <div className="flex gap-2 justify-center">
               {weekEntries.map((entry, i) => {
@@ -527,7 +694,7 @@ export default function SalahTracker() {
           {fajrStats.rank.rank < 5 && (
             <div className="glass-card p-5">
               <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--text-muted)] mb-3">
-                Next Rank: {FAJR_RANKS[fajrStats.rank.rank]?.titleAr} {FAJR_RANKS[fajrStats.rank.rank]?.emoji}
+                {t('next_rank', L)}: {FAJR_RANKS[fajrStats.rank.rank]?.titleAr} {FAJR_RANKS[fajrStats.rank.rank]?.emoji}
               </h3>
               <div className="flex items-center gap-3">
                 <div className="flex-1">

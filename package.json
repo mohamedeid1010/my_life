@@ -16,6 +16,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^25.3.3",
+    "adhan": "^4.4.3",
     "firebase": "^12.10.0",
     "firebase-admin": "^13.1.0",
     "lucide-react": "^0.576.0",

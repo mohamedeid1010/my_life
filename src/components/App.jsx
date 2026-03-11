@@ -18,6 +18,9 @@ const LoginPage = lazy(() => import('./LoginPage'));
 const SettingsModal = lazy(() => import('./SettingsModal'));
 const WeeklyPlanner = lazy(() => import('./WeeklyPlanner'));
 const SalahTracker = lazy(() => import('./SalahTracker'));
+const OnboardingSetup = lazy(() => import('./OnboardingSetup'));
+
+const ONBOARDING_KEY = 'herizon_onboarding_done';
 
 // ── All available nav pages (add future pages here) ──
 const ALL_NAV_PAGES = [
@@ -119,10 +122,46 @@ export default function App() {
   // We no longer block the initial render. The background Firebase listener
   // will seamlessly update the user state if the session expired.
 
+  // Track onboarding state per user
+  const [onboardingDone, setOnboardingDone] = useState(() => {
+    try {
+      return localStorage.getItem(ONBOARDING_KEY) === 'true';
+    } catch { return false; }
+  });
+
+  // Reset onboarding state when user changes
+  useEffect(() => {
+    if (!user) {
+      setOnboardingDone(false);
+    } else {
+      try {
+        const done = localStorage.getItem(ONBOARDING_KEY) === 'true';
+        setOnboardingDone(done);
+      } catch { /* ignore */ }
+    }
+  }, [user?.uid]);
+
+  const handleOnboardingComplete = (navConfig) => {
+    saveNavConfig(navConfig);
+    try { localStorage.setItem(ONBOARDING_KEY, 'true'); } catch { /* ignore */ }
+    setOnboardingDone(true);
+  };
+
   if (!user) {
     return (
       <Suspense fallback={<PageLoader />}>
         <LoginPage />
+      </Suspense>
+    );
+  }
+
+  if (!onboardingDone) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <OnboardingSetup
+          allNavPages={ALL_NAV_PAGES}
+          onComplete={handleOnboardingComplete}
+        />
       </Suspense>
     );
   }

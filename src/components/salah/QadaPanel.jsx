@@ -1,8 +1,13 @@
 import React from 'react';
 import { CheckCircle, PlusCircle, AlertTriangle, BookOpen } from 'lucide-react';
 import { PRAYER_NAMES, PRAYER_LABELS } from '../../types/salah.types';
+import { t } from '../../config/translations';
+import usePreferences from '../../hooks/usePreferences';
 
 export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone }) {
+  const { language } = usePreferences();
+  const L = language;
+  const isAr = L === 'ar';
   const totalOwed = PRAYER_NAMES.reduce((sum, n) => sum + (qadaRecord?.prayers[n]?.owed || 0), 0);
   const totalDone = PRAYER_NAMES.reduce((sum, n) => sum + (qadaRecord?.prayers[n]?.done || 0), 0);
   const totalRemaining = totalOwed - totalDone;
@@ -12,7 +17,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
   const todayMissed = PRAYER_NAMES.filter(n => todayData?.prayers[n]?.status === 'missed');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
 
       {/* Header — Hadith */}
       <div className="glass-card p-5 border-l-4 border-l-amber-500 relative overflow-hidden">
@@ -21,13 +26,13 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
           <BookOpen size={36} className="text-amber-400 shrink-0 mt-1" />
           <div>
             <h2 className="text-xl font-black text-[var(--text-primary)] mb-2 tracking-tight">
-              Qada — Make-Up Prayers
+              {t('qada_tracker', L)}
             </h2>
             <p className="text-sm text-amber-400/90 font-bold italic leading-relaxed mb-1">
-              "مَن نَامَ عَن صَلَاةٍ أَو نَسِيَهَا فَلْيُصَلِّهَا إِذَا ذَكَرَهَا"
+              "{t('qada_hadith_ar', L)}"
             </p>
             <p className="text-[11px] text-[var(--text-muted)] italic">
-              "Whoever sleeps through a prayer or forgets it, let him pray it when he remembers it — there is no expiation for it other than that." — Sahih Muslim
+              {isAr ? '' : '"Whoever sleeps through a prayer or forgets it, let him pray it when he remembers it — there is no expiation for it other than that." — Sahih Muslim'}
             </p>
           </div>
         </div>
@@ -39,7 +44,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle size={15} className="text-red-400" />
             <span className="text-xs font-bold uppercase tracking-wider text-red-400">
-              Missed Today — Auto-added to Qada
+              {t('missed_today', L)}
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -52,14 +57,14 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
                   style={{ background: '#ef444415', border: '1px solid #ef444430', color: '#f87171' }}
                 >
                   <span>{label.emoji}</span>
-                  <span>{label.en}</span>
+                  <span>{isAr ? label.ar : label.en}</span>
                   <span className="opacity-60">({label.ar})</span>
                 </div>
               );
             })}
           </div>
           <p className="text-[10px] text-[var(--text-muted)] mt-2">
-            These are automatically counted in your debt below. Go back to Today and mark them prayed if corrected.
+            {t('missed_today_note', L)}
           </p>
         </div>
       )}
@@ -68,17 +73,17 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
       <div className="glass-card p-5">
         <div className="flex justify-between items-center mb-3">
           <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-            Total Qada Debt
+            {t('total_qada_debt', L)}
           </span>
           <span
             className="text-sm font-black"
             style={{ color: totalRemaining === 0 ? '#10b981' : '#f59e0b' }}
           >
             {totalRemaining === 0 && totalOwed > 0
-              ? '✅ All caught up — MashaAllah!'
+              ? t('all_caught_up', L)
               : totalRemaining === 0
-              ? 'No debt recorded'
-              : `${totalRemaining} prayer${totalRemaining > 1 ? 's' : ''} remaining`}
+              ? t('no_debt_recorded', L)
+              : `${totalRemaining} ${t('prayers_remaining', L)}`}
           </span>
         </div>
 
@@ -98,10 +103,10 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
             </div>
             <div className="flex justify-between mt-1.5">
               <span className="text-[10px] text-[var(--text-muted)]">
-                Made up: <span className="font-bold text-emerald-400">{totalDone}</span>
+                {t('made_up', L)}: <span className="font-bold text-emerald-400">{totalDone}</span>
               </span>
               <span className="text-[10px] text-[var(--text-muted)]">
-                Total owed: {totalOwed} · {progress}% complete
+                {t('total_owed', L)}: {totalOwed} · {progress}% {t('completed', L)}
               </span>
             </div>
           </>
@@ -109,7 +114,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
 
         {totalOwed === 0 && (
           <p className="text-xs text-[var(--text-muted)] mt-1">
-            Prayers marked as "Missed" in the Today tab are automatically tracked here. You can also add past missed prayers manually.
+            {t('qada_no_debt_hint', L)}
           </p>
         )}
       </div>
@@ -151,25 +156,25 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-black text-[var(--text-primary)] text-sm">
-                        {label.en}
+                        {isAr ? label.ar : label.en}
                       </span>
                       <span className="text-[10px] text-[var(--text-muted)]">
-                        {label.ar}
+                        {isAr ? label.en : label.ar}
                       </span>
                       {missedToday && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400">
-                          missed today
+                          {t('missed_today_label', L)}
                         </span>
                       )}
                     </div>
                     {remaining > 0 ? (
                       <span className="text-[11px] font-bold text-amber-400">
-                        {remaining} prayer{remaining > 1 ? 's' : ''} owed
+                        {remaining} {t('prayers_owed', L)}
                       </span>
                     ) : entry.owed > 0 ? (
-                      <span className="text-[11px] font-bold text-emerald-400">✅ Fully made up</span>
+                      <span className="text-[11px] font-bold text-emerald-400">{t('fully_made_up', L)}</span>
                     ) : (
-                      <span className="text-[11px] text-[var(--text-muted)]">No debt</span>
+                      <span className="text-[11px] text-[var(--text-muted)]">{t('no_debt', L)}</span>
                     )}
                   </div>
                 </div>
@@ -188,7 +193,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
                       title="Mark one as made up"
                     >
                       <CheckCircle size={13} />
-                      Made Up
+                      {t('made_up_btn', L)}
                     </button>
                   )}
                   <button
@@ -202,7 +207,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
                     title="Add a past missed prayer"
                   >
                     <PlusCircle size={13} />
-                    Add Missed
+                    {t('add_missed_btn', L)}
                   </button>
                 </div>
               </div>
@@ -221,7 +226,7 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
                   </div>
                   <div className="flex justify-between mt-1">
                     <span className="text-[9px] text-[var(--text-muted)]">
-                      Made up: {entry.done} / {entry.owed}
+                      {t('made_up_count', L)}: {entry.done} / {entry.owed}
                     </span>
                     <span className="text-[9px] text-[var(--text-muted)]">{pct}%</span>
                   </div>
@@ -234,10 +239,9 @@ export default function QadaPanel({ qadaRecord, todayData, onAddDebt, onLogDone 
 
       {/* Footer note */}
       <div className="glass-card p-4 border border-[var(--border-glass)] text-center">
-        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-          💡 Prayers marked <strong className="text-red-400">Missed</strong> in the Today tab are automatically added to your debt here.
-          Use <strong className="text-amber-400">Add Missed</strong> for prayers missed before you started using the app.
-        </p>
+        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed"
+           dangerouslySetInnerHTML={{ __html: '💡 ' + t('qada_footer_note', L) }}
+        />
       </div>
     </div>
   );

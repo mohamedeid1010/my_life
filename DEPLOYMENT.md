@@ -51,7 +51,7 @@ firebase deploy --only hosting
 ## أمر واحد يعمل كل حاجة
 
 ```bash
-git add -A && git commit -m "weekly planner v2 fix bug with migration and add new feature " && git push && npm run build && firebase deploy --only hosting
+git add -A && git commit -m " siting intro  " && git push && npm run build && firebase deploy --only hosting
 ```
 
 ---

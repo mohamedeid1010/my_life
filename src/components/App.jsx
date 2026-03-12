@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import useGymData from '../hooks/useGymData';
 import useHabitsData from '../hooks/useHabitsData';
 import useExportCSV from '../hooks/useExportCSV';
-import { Activity, Target, Dumbbell, Settings, Loader2, Cloud, CloudOff, Calendar, Moon } from 'lucide-react';
+import { Target, Dumbbell, Settings, Loader2, Cloud, CloudOff, Calendar, Moon, Layers } from 'lucide-react';
 import { t } from '../config/translations';
 import usePreferences from '../hooks/usePreferences';
 import { useSyncStore } from '../stores/useSyncStore';
@@ -13,25 +13,25 @@ import { db } from '../firebase';
 // ── Lazy-loaded page components (code splitting for faster initial load) ──
 const GymTracker = lazy(() => import('./GymTracker'));
 const HabitsTracker = lazy(() => import('./HabitsTracker'));
-const LifeOverview = lazy(() => import('./LifeOverview'));
 const LoginPage = lazy(() => import('./LoginPage'));
 const SettingsModal = lazy(() => import('./SettingsModal'));
 const WeeklyPlanner = lazy(() => import('./WeeklyPlanner'));
 const SalahTracker = lazy(() => import('./SalahTracker'));
 const OnboardingSetup = lazy(() => import('./OnboardingSetup'));
+const LifeOSPage = lazy(() => import('./life-os/LifeOSPage'));
 
 const ONBOARDING_KEY = 'herizon_onboarding_done';
 
 // ── All available nav pages (add future pages here) ──
 const ALL_NAV_PAGES = [
-  { id: 'overview', labelKey: 'nav_overview', icon: 'Activity' },
-  { id: 'habits', labelKey: 'nav_habits', icon: 'Target' },
-  { id: 'gym', labelKey: 'nav_gym', icon: 'Dumbbell' },
-  { id: 'planner', labelKey: 'nav_planner', icon: 'Calendar' },
-  { id: 'salah', labelKey: 'nav_salah', icon: 'Moon' },
+  { id: 'lifeos',   labelKey: 'nav_lifeos',   icon: 'Layers' },
+  { id: 'salah',    labelKey: 'nav_salah',    icon: 'Moon' },
+  { id: 'planner',  labelKey: 'nav_planner',  icon: 'Calendar' },
+  { id: 'habits',   labelKey: 'nav_habits',   icon: 'Target' },
+  { id: 'gym',      labelKey: 'nav_gym',      icon: 'Dumbbell' },
 ];
 
-const ICON_MAP = { Activity, Dumbbell, Target, Calendar, Moon };
+const ICON_MAP = { Dumbbell, Target, Calendar, Moon, Layers };
 const NAV_STORAGE_KEY = 'herizon_nav_config_v2';
 
 function loadNavConfig() {
@@ -211,7 +211,7 @@ function Dashboard({ user, logout }) {
       return {
         id: p.id,
         label: t(pageDef.labelKey, language),
-        icon: ICON_MAP[pageDef.icon] || Activity,
+        icon: ICON_MAP[pageDef.icon] || Layers,
       };
     })
     .filter(Boolean);
@@ -356,12 +356,6 @@ function Dashboard({ user, logout }) {
       <div className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-5 md:p-6 space-y-4 sm:space-y-6" style={{ paddingBottom: 'max(2rem, var(--safe-bottom))' }}>
         <Suspense fallback={<PageLoader />}>
           <div className="animate-fade-in">
-            {activeTab === 'overview' && (
-              <LifeOverview
-                habitsData={habitsData}
-                gymData={{ enrichedData, stats, workoutSystem, updateWeight, updateBodyFat }}
-              />
-            )}
             {activeTab === 'habits' && <HabitsTracker habitsData={habitsData} />}
             {activeTab === 'gym' && (
               <GymTracker
@@ -380,6 +374,7 @@ function Dashboard({ user, logout }) {
                 deleteSession={deleteSession}
               />
             )}
+            {activeTab === 'lifeos' && <LifeOSPage onNavigate={setActiveTab} />}
             {activeTab === 'planner' && <WeeklyPlanner />}
             {activeTab === 'salah' && <SalahTracker />}
           </div>

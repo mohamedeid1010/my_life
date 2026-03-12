@@ -2,6 +2,7 @@
 const translations = {
   en: {
     // Navigation
+    nav_lifeos: 'Life OS',
     nav_overview: 'Overview',
     nav_gym: 'Gym',
     nav_habits: 'Habits',
@@ -403,6 +404,7 @@ const translations = {
   },
   ar: {
     // Navigation
+    nav_lifeos: 'نظام الحياة',
     nav_overview: 'نظرة عامة',
     nav_gym: 'الجيم',
     nav_habits: 'العادات',

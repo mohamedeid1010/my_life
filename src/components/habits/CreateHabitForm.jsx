@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Target, Heart, Briefcase, Sparkles, BookOpen, Dumbbell, Users, DollarSign, Moon, Library } from 'lucide-react';
 import EmojiPicker from './EmojiPicker';
+import BrowseHabitsModal from './BrowseHabitsModal';
+import { HABIT_SUGGESTIONS } from '../../data/habitSuggestions';
+import usePreferences from '../../hooks/usePreferences';
 
 const CATEGORIES = [
   { id: 'health', label: 'Health', icon: <Heart size={16} /> },
@@ -16,10 +19,37 @@ const CATEGORIES = [
 ];
 
 export default function CreateHabitForm({ onClose, onSave }) {
+  const prefs = usePreferences();
+  const isAr = prefs?.language === 'ar';
+
+  useEffect(() => {
+    const nav = document.getElementById('main-navbar');
+    if (nav) nav.style.display = 'none';
+    return () => { if (nav) nav.style.display = ''; };
+  }, []);
+
   const [name, setName] = useState('');
   const [icon, setIcon] = useState('💧');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [category, setCategory] = useState('health');
+  const [showBrowse, setShowBrowse] = useState(false);
+
+  // Quick suggestions for the active category (up to 6)
+  const quickSuggestions = useMemo(() =>
+    HABIT_SUGGESTIONS.filter(h => h.category === category).slice(0, 6),
+    [category]
+  );
+
+  const applyHabit = (habit) => {
+    const { language: lang } = prefs;
+    setName(lang === 'ar' ? habit.ar : habit.en);
+    setIcon(habit.icon);
+    setCategory(habit.category);
+    setTargetType(habit.targetType);
+    setTargetValue(habit.targetValue ?? 1);
+    setUnit(habit.unit ?? 'times');
+    setGraceDaysAllowance(habit.graceDaysAllowance ?? 0);
+  };
   const type = 'daily'; // daily, weekly_target
   const [targetType, setTargetType] = useState('boolean'); // boolean, numeric
   const [targetValue, setTargetValue] = useState(1);
@@ -53,7 +83,8 @@ export default function CreateHabitForm({ onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
+    <>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" dir="rtl">
       <div className="glass-card w-full max-w-lg overflow-hidden shadow-2xl relative">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-white/5">
@@ -61,6 +92,14 @@ export default function CreateHabitForm({ onClose, onSave }) {
             <Sparkles className="text-violet-400" />
             Build a New Habit
           </h2>
+          <button
+            type="button"
+            onClick={() => setShowBrowse(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-violet-500/40 bg-violet-500/10 text-violet-300 text-xs font-bold hover:bg-violet-500/20 transition-all mr-2"
+          >
+            <Library size={14} />
+            {isAr ? 'تصفح المكتبة' : 'Browse Library'}
+          </button>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white/50 transition-colors">
             <X size={20} />
           </button>
@@ -108,6 +147,38 @@ export default function CreateHabitForm({ onClose, onSave }) {
               />
             </div>
           </div>
+
+          {/* Quick Suggestions */}
+          {quickSuggestions.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">{isAr ? 'اقتراحات سريعة' : 'Quick Suggestions'}</label>
+              <div className="flex flex-wrap gap-2">
+                {quickSuggestions.map((habit, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => applyHabit(habit)}
+                    title={habit.en}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10
+                               hover:bg-violet-500/15 hover:border-violet-500/40 hover:text-violet-200
+                               text-white/60 text-xs font-bold transition-all active:scale-95"
+                  >
+                    <span>{habit.icon}</span>
+                    <span className="max-w-[120px] truncate">{isAr ? habit.ar : habit.en}</span>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setShowBrowse(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-dashed border-white/20
+                             hover:bg-violet-500/10 hover:border-violet-500/40 text-white/30 hover:text-violet-300
+                             text-xs font-bold transition-all active:scale-95"
+                >
+                  {isAr ? '+ المزيد' : '+ More'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Start Date */}
           <div className="flex flex-col gap-2">
@@ -241,5 +312,12 @@ export default function CreateHabitForm({ onClose, onSave }) {
         </form>
       </div>
     </div>
+      {showBrowse && (
+        <BrowseHabitsModal
+          onSelect={applyHabit}
+          onClose={() => setShowBrowse(false)}
+        />
+      )}
+    </>
   );
 }

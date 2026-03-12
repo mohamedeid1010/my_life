@@ -293,6 +293,7 @@ interface SalahStore {
   loadRecentData: () => Promise<void>;
   addQadaDebt: (prayer: PrayerName, count?: number) => Promise<void>;
   logQadaDone: (prayer: PrayerName, count?: number) => Promise<void>;
+  setPrayerStatusForDate: (updatedDay: SalahDayEntry, prayer: PrayerName, prevStatus: PrayerStatus) => Promise<void>;
 }
 
 /* ─────────────── Store Implementation ─────────────── */
@@ -508,6 +509,45 @@ export const useSalahStore = create<SalahStore>()(
     const ref = doc(db, 'users', userId, 'salah', date);
     const snap = await getDoc(ref);
     return snap.exists() ? snap.data() as SalahDayEntry : null;
+  },
+
+  setPrayerStatusForDate: async (updatedDay: SalahDayEntry, prayer: PrayerName, prevStatus: PrayerStatus) => {
+    const { userId } = get();
+    if (!userId) return;
+
+    const ref = doc(db, 'users', userId, 'salah', updatedDay.date);
+    await setDoc(ref, sanitizeDayEntry(updatedDay), { merge: true }).catch(console.error);
+
+    // Sync into Analytics/Fajr views
+    const { weekEntries, recentEntries } = get();
+    const synced = syncTodayIntoEntries(updatedDay, weekEntries, recentEntries);
+    set(synced);
+
+    // Auto-track Qada debt when prayer toggled to/from 'missed'
+    const { qadaRecord } = get();
+    if (qadaRecord) {
+      const newStatus = updatedDay.prayers[prayer].status;
+      const becameMissed = newStatus === 'missed' && prevStatus !== 'missed';
+      const undoneMissed = prevStatus === 'missed' && newStatus !== 'missed';
+      if (becameMissed || undoneMissed) {
+        const current = qadaRecord.prayers[prayer];
+        const newOwed = becameMissed
+          ? current.owed + 1
+          : Math.max(0, current.owed - 1);
+        const newDone = becameMissed ? current.done : Math.min(current.done, newOwed);
+        const newQada: QadaRecord = {
+          ...qadaRecord,
+          prayers: {
+            ...qadaRecord.prayers,
+            [prayer]: { owed: newOwed, done: newDone },
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        set({ qadaRecord: newQada });
+        const qadaRef = doc(db, 'users', userId, 'salah', 'qada');
+        setDoc(qadaRef, newQada, { merge: true }).catch(console.error);
+      }
+    }
   },
 
   loadWeekData: async () => {

@@ -258,6 +258,7 @@ function Dashboard({ user, logout }) {
     >
       {/* ═══ Professional Floating Glass Navbar ═══ */}
       <nav
+        id="main-navbar"
         className="sticky z-50 mx-auto max-w-7xl transition-all duration-300 px-3 sm:px-4 md:px-6"
         style={{ top: 'calc(var(--safe-top) + 0.5rem)' }}
       >

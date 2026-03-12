@@ -2,7 +2,7 @@ import React, { useMemo, useEffect, useRef, useState } from 'react';
 import { getLocalDateString } from '../../stores/useHabitStore';
 import { Plus, Check, Clock, Edit2 } from 'lucide-react';
 
-export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
+export default function UnifiedHabitsGrid({ habits, onLogEntry, onExpandDetails }) {
   const scrollRef = useRef(null);
   const [monthOffset, setMonthOffset] = useState(0);
 
@@ -122,7 +122,11 @@ export default function UnifiedHabitsGrid({ habits, onLogEntry }) {
               return (
                 <div key={habit.id} className="flex items-center group">
                   {/* Habit Name/Icon column */}
-                  <div className="w-48 shrink-0 flex items-center gap-3 pr-4 border-r border-white/10 group-hover:border-white/30 transition-colors">
+                  <div
+                    className={`w-48 shrink-0 flex items-center gap-3 pr-4 border-r border-white/10 group-hover:border-white/30 transition-colors ${onExpandDetails ? 'cursor-pointer hover:bg-white/5 rounded-l-xl' : ''}`}
+                    onClick={() => onExpandDetails && onExpandDetails(habit)}
+                    title={onExpandDetails ? `Open ${habit.name}` : undefined}
+                  >
                     <span className="text-xl">{habit.icon}</span>
                     <span className="text-xs font-bold text-white/80 truncate group-hover:text-white transition-colors">
                       {habit.name}

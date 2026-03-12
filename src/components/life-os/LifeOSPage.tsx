@@ -100,14 +100,13 @@ function getHijriDate(date: Date): string {
    Prayer time estimator using adhan (if available)
    Falls back to hardcoded fallback times
 ──────────────────────────────────────────────── */
-async function computePrayerTimes(): Promise<Record<string, Date> | null> {
+async function computePrayerTimes(date: Date = new Date()): Promise<Record<string, Date> | null> {
   try {
     // Dynamic import so it doesn't block if not installed
     const { CalculationMethod, Coordinates, PrayerTimes } = await import('adhan');
     // Use a generic latitude/longitude (Cairo) — in production, read from user profile.
     const coordinates = new Coordinates(30.0444, 31.2357);
     const params = CalculationMethod.Egyptian();
-    const date = new Date();
     const pt = new PrayerTimes(coordinates, date, params);
     return {
       fajr:    pt.fajr,
@@ -122,7 +121,7 @@ async function computePrayerTimes(): Promise<Record<string, Date> | null> {
 }
 
 function formatTime(d: Date): string {
-  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 /* ────────────────────────────────────────────────
@@ -240,8 +239,12 @@ export default function LifeOSPage({ onNavigate }: LifeOSPageProps) {
 
   /* ── Prayer times (adhan) ── */
   const [prayerTimes, setPrayerTimes] = useState<Record<string, Date> | null>(null);
+  const [tomorrowPrayerTimes, setTomorrowPrayerTimes] = useState<Record<string, Date> | null>(null);
   useEffect(() => {
-    computePrayerTimes().then(setPrayerTimes);
+    computePrayerTimes(new Date()).then(setPrayerTimes);
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    computePrayerTimes(tomorrow).then(setTomorrowPrayerTimes);
   }, []);
 
   /* ── Reflection (Firestore) ── */
@@ -304,12 +307,28 @@ export default function LifeOSPage({ onNavigate }: LifeOSPageProps) {
           label: PRAYER_LABELS[name].en,
           emoji: PRAYER_LABELS[name].emoji,
           timeLeft: minsToLabel(minsLeft),
+          targetDate: pt,
           time: formatTime(pt),
         };
       }
     }
+
+    // Fallback to tomorrow's Fajr if all prayers today have passed
+    if (tomorrowPrayerTimes && tomorrowPrayerTimes['fajr']) {
+      const pt = tomorrowPrayerTimes['fajr'];
+      const minsLeft = Math.round((pt.getTime() - now.getTime()) / 60000);
+      return {
+        name: 'fajr' as const,
+        label: PRAYER_LABELS['fajr'].en,
+        emoji: PRAYER_LABELS['fajr'].emoji,
+        timeLeft: minsToLabel(minsLeft),
+        targetDate: pt,
+        time: formatTime(pt),
+      };
+    }
+
     return undefined;
-  }, [prayerTimes]);
+  }, [prayerTimes, tomorrowPrayerTimes]);
 
   /* Prayer completion % */
   const prayerPct = Math.round((completedPrayerCount / 5) * 100);

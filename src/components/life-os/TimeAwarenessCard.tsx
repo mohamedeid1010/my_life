@@ -8,20 +8,37 @@ interface TimeAwarenessCardProps {
 
 /* ── Live clock tick ── */
 function useLiveClock() {
-  const [time, setTime] = useState(() => {
-    const now = new Date();
-    return now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  });
+  const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date();
-      setTime(now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-    }, 1000);
+    const id = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  return time;
+  const hours = time.getHours();
+  const mins = time.getMinutes().toString().padStart(2, '0');
+  const secs = time.getSeconds().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  const hour12Str = hour12.toString().padStart(2, '0');
+
+  return {
+    now: time,
+    main: `${hour12Str}:${mins}`,
+    suffix: `${secs} ${ampm}`
+  };
+}
+
+function formatCountdown(target: Date, now: Date): string {
+  const diff = target.getTime() - now.getTime();
+  if (diff <= 0) return '00:00:00';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  const hStr = h > 0 ? `${h.toString().padStart(2, '0')}:` : '';
+  const mStr = m.toString().padStart(2, '0') + ':';
+  const sStr = s.toString().padStart(2, '0');
+  return `${hStr}${mStr}${sStr}`;
 }
 
 export default function TimeAwarenessCard({ data }: TimeAwarenessCardProps) {
@@ -50,10 +67,10 @@ export default function TimeAwarenessCard({ data }: TimeAwarenessCardProps) {
           className="text-4xl font-black tracking-tight tabular-nums"
           style={{ color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}
         >
-          {liveTime.slice(0, 5)}
+          {liveTime.main}
         </span>
-        <span className="text-base font-bold tabular-nums" style={{ color: 'var(--text-muted)' }}>
-          {liveTime.slice(6)}
+        <span className="text-base font-bold tabular-nums uppercase" style={{ color: 'var(--text-muted)' }}>
+          {liveTime.suffix}
         </span>
       </div>
 
@@ -94,11 +111,11 @@ export default function TimeAwarenessCard({ data }: TimeAwarenessCardProps) {
             </div>
           </div>
           <div
-            className="flex items-center gap-1 text-xs font-black px-2 py-1 rounded-lg"
+            className="flex items-center gap-1 text-xs font-black px-2 py-1 rounded-lg tabular-nums"
             style={{ color: '#8b5cf6', background: 'rgba(139,92,246,0.1)' }}
           >
             <Bell size={10} />
-            <span>in {data.nextPrayer.timeLeft}</span>
+            <span>— {data.nextPrayer.targetDate ? formatCountdown(data.nextPrayer.targetDate, liveTime.now) : data.nextPrayer.timeLeft}</span>
           </div>
         </div>
       )}

@@ -72,6 +72,7 @@ export interface PrayerStatusData {
     label: string;
     emoji: string;
     timeLeft: string;  // "1h 20m"
+    targetDate?: Date; // Added for live countdown
     time: string;
   };
 }
@@ -110,6 +111,7 @@ export interface TimeAwarenessData {
     label: string;
     emoji: string;
     timeLeft: string;
+    targetDate?: Date;
     time: string;
   };
   nextTask?: {
